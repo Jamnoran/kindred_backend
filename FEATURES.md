@@ -32,19 +32,19 @@ Legend: `[ ]` todo · `[x]` done · `[~]` in progress / partially done
 
 ## Phase 2 — Discovery + transparent matching
 
-- [ ] User-controlled hard filters (distance / age / looking_for / dealbreakers)
-- [ ] Explainable scoring function (§7) with `ST_Distance_Sphere` proximity
-- [ ] Per-user weight tuning (persisted in `preferences.weights`)
-- [ ] "Why this person?" factors in the discovery response
-- [ ] Like / pass / superlike; mutual like → match (transactional)
-- [ ] "Who liked you" endpoint (free, no gating)
+- [x] User-controlled hard filters (distance / age / looking_for / dealbreakers)
+- [x] Explainable scoring function (§7) with `ST_Distance_Sphere` proximity
+- [x] Per-user weight tuning (persisted in `preferences.weights`)
+- [x] "Why this person?" factors in the discovery response
+- [x] Like / pass / superlike; mutual like → match (transactional)
+- [x] "Who liked you" endpoint (free, no gating)
 
 ## Phase 3 — Chat
 
 - [ ] Spring WebSocket (STOMP) + Redis relay
-- [ ] Conversations + messages (authz by match membership on every read/send)
+- [x] Conversations + messages (authz by match membership on every read/send)
 - [ ] Private chat-image pipeline + short-lived signed URLs (5-min expiry)
-- [ ] Presence / typing / read receipts
+- [~] Presence / typing / read receipts (read receipts done via REST; presence/typing need the WebSocket item)
 
 ## Phase 4 — Safety & legal
 
@@ -63,6 +63,24 @@ Legend: `[ ]` todo · `[x]` done · `[~]` in progress / partially done
 
 ## Work log
 
+- **2026-07-02** — Phase 2 complete + Phase 3 REST chat (`discovery/` + `chat/`).
+  Discovery: SQL hard filters (age via `TIMESTAMPDIFF`, viewer's distance limit via
+  `ST_Distance_Sphere`, no repeats, blocks pre-severed both ways, deleted/unverified
+  invisible) + JSON hard filters (looking_for overlap, dealbreaker interests) →
+  `DiscoveryScoring` — a pure function of jaccard interests / linear distance decay /
+  activity steps / mutual-fit, weighted by the user's own `preferences.weights`
+  (0..5, clamped) — every card returns the full `whyThisPerson` breakdown; unknowns
+  are neutral 0.5, never penalties; displayed distance respects location_visibility
+  (approximate → 5 km steps). `GET/PUT /preferences`, `POST /likes`
+  (like/superlike/pass; superlike signals, never boosts), mutual like → match +
+  conversation in one transaction, `GET /likes/received` free. Chat: `GET
+  /conversations` (other participant, last message, unread count), keyset-paginated
+  messages, `POST .../messages`, `POST .../read` receipts — membership checked on
+  every read/send, non-membership = 404 (no probing). Verified: scoring/matching/
+  authz unit tests + full HTTP smoke on H2 (two users → mutual like → match → chat →
+  read receipts → outsider 404). **The discovery SQL itself needs the MySQL smoke
+  test** (H2 lacks `ST_Distance_Sphere`). Still open in Phase 3: STOMP + Redis relay
+  (then presence/typing), private chat images. Likes have no rate limit yet (Phase 4).
 - **2026-07-02** — Phase 1 image pipeline (`photo/` + `media/` additions): JobRunr
   worker (in-process, MySQL-backed via the main DataSource; JobRequest pattern,
   idempotent on retry). `POST /photos {storageKey}` records a pending row and

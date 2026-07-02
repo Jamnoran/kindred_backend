@@ -18,6 +18,9 @@ interface ProfileRepository : JpaRepository<Profile, Long> {
     @EntityGraph(attributePaths = ["interests"])
     fun findWithInterestsByUserId(userId: Long): Profile?
 
+    @EntityGraph(attributePaths = ["interests"])
+    fun findAllWithInterestsByUserIdIn(userIds: Collection<Long>): List<Profile>
+
     /** Spatial write — POINT is lng/lat order in MySQL, SRID 4326 to match the column. */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(

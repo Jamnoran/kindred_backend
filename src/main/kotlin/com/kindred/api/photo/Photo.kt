@@ -55,4 +55,8 @@ interface PhotoRepository : JpaRepository<Photo, Long> {
     fun findAllByProfileUserIdOrderBySortOrderAsc(profileUserId: Long): List<Photo>
     fun findByIdAndProfileUserId(id: Long, profileUserId: Long): Photo?
     fun existsByStorageKey(storageKey: String): Boolean
+    fun findAllByProfileUserIdInAndModerationStatusAndIsPrimaryTrue(
+        profileUserIds: Collection<Long>,
+        moderationStatus: ModerationStatus,
+    ): List<Photo>
 }

@@ -107,6 +107,54 @@
         }
       }
     },
+    "/api/v1/preferences": {
+      "get": {
+        "tags": [
+          "discovery-controller"
+        ],
+        "operationId": "preferences",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferencesResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "discovery-controller"
+        ],
+        "operationId": "updatePreferences",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePreferencesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferencesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/photos": {
       "get": {
         "tags": [
@@ -181,6 +229,165 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ProfilePhotoUploadResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/likes": {
+      "post": {
+        "tags": [
+          "discovery-controller"
+        ],
+        "operationId": "react",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReactRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReactResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conversations/{id}/read": {
+      "post": {
+        "tags": [
+          "chat-controller"
+        ],
+        "operationId": "markRead",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "format": "int32"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conversations/{id}/messages": {
+      "get": {
+        "tags": [
+          "chat-controller"
+        ],
+        "operationId": "messages",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MessageResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "chat-controller"
+        ],
+        "operationId": "send",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendMessageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
                 }
               }
             }
@@ -358,6 +565,29 @@
         }
       }
     },
+    "/api/v1/likes/received": {
+      "get": {
+        "tags": [
+          "discovery-controller"
+        ],
+        "operationId": "receivedLikes",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReceivedLikeResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/interests": {
       "get": {
         "tags": [
@@ -373,6 +603,66 @@
                   "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/InterestResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/discovery": {
+      "get": {
+        "tags": [
+          "discovery-controller"
+        ],
+        "operationId": "discover",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DiscoveryCard"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conversations": {
+      "get": {
+        "tags": [
+          "chat-controller"
+        ],
+        "operationId": "conversations",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConversationResponse"
                   }
                 }
               }
@@ -557,6 +847,124 @@
           "lng"
         ]
       },
+      "UpdatePreferencesRequest": {
+        "type": "object",
+        "properties": {
+          "distanceKm": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 500,
+            "minimum": 1
+          },
+          "ageMin": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 120,
+            "minimum": 18
+          },
+          "ageMax": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 120,
+            "minimum": 18
+          },
+          "lookingFor": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "minItems": 0
+          },
+          "dealbreakers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "minItems": 0
+          },
+          "weights": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number",
+              "format": "double"
+            }
+          }
+        },
+        "required": [
+          "ageMax",
+          "ageMin",
+          "distanceKm"
+        ]
+      },
+      "PreferencesResponse": {
+        "type": "object",
+        "properties": {
+          "distanceKm": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "ageMin": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "ageMax": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lookingFor": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "dealbreakers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "weights": {
+            "$ref": "#/components/schemas/Weights"
+          }
+        },
+        "required": [
+          "ageMax",
+          "ageMin",
+          "dealbreakers",
+          "distanceKm",
+          "lookingFor",
+          "weights"
+        ]
+      },
+      "Weights": {
+        "type": "object",
+        "properties": {
+          "interests": {
+            "type": "number",
+            "format": "double"
+          },
+          "distance": {
+            "type": "number",
+            "format": "double"
+          },
+          "activity": {
+            "type": "number",
+            "format": "double"
+          },
+          "mutualFit": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": [
+          "activity",
+          "distance",
+          "interests",
+          "mutualFit"
+        ]
+      },
       "CreatePhotoRequest": {
         "type": "object",
         "properties": {
@@ -655,6 +1063,88 @@
           "expiresAt",
           "storageKey",
           "uploadUrl"
+        ]
+      },
+      "ReactRequest": {
+        "type": "object",
+        "properties": {
+          "toUserId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "like",
+              "superlike",
+              "pass"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "toUserId"
+        ]
+      },
+      "ReactResponse": {
+        "type": "object",
+        "properties": {
+          "matched": {
+            "type": "boolean"
+          },
+          "matchId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "conversationId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "matched"
+        ]
+      },
+      "SendMessageRequest": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "body"
+        ]
+      },
+      "MessageResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "senderId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "body": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "readAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "createdAt",
+          "id",
+          "senderId"
         ]
       },
       "VerifyEmailRequest": {
@@ -784,6 +1274,209 @@
           "openApiSpec",
           "source",
           "version"
+        ]
+      },
+      "PhotoSummary": {
+        "type": "object",
+        "properties": {
+          "urls": {
+            "$ref": "#/components/schemas/PhotoUrls"
+          },
+          "blurhash": {
+            "type": "string"
+          }
+        }
+      },
+      "ReceivedLikeResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "like",
+              "superlike",
+              "pass"
+            ]
+          },
+          "likedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "photo": {
+            "$ref": "#/components/schemas/PhotoSummary"
+          }
+        },
+        "required": [
+          "displayName",
+          "kind",
+          "likedAt",
+          "userId"
+        ]
+      },
+      "DiscoveryCard": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "age": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "bio": {
+            "type": "string"
+          },
+          "lookingFor": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "interests": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "photo": {
+            "$ref": "#/components/schemas/PhotoSummary"
+          },
+          "distanceKm": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "score": {
+            "type": "number",
+            "format": "double"
+          },
+          "whyThisPerson": {
+            "$ref": "#/components/schemas/Factors"
+          }
+        },
+        "required": [
+          "age",
+          "displayName",
+          "interests",
+          "lookingFor",
+          "score",
+          "userId",
+          "whyThisPerson"
+        ]
+      },
+      "Factors": {
+        "type": "object",
+        "properties": {
+          "sharedInterests": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "interestScore": {
+            "type": "number",
+            "format": "double"
+          },
+          "distanceKm": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "distanceScore": {
+            "type": "number",
+            "format": "double"
+          },
+          "daysSinceActive": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "activityScore": {
+            "type": "number",
+            "format": "double"
+          },
+          "mutualFitScore": {
+            "type": "number",
+            "format": "double"
+          },
+          "weights": {
+            "$ref": "#/components/schemas/Weights"
+          },
+          "total": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": [
+          "activityScore",
+          "daysSinceActive",
+          "distanceScore",
+          "interestScore",
+          "mutualFitScore",
+          "sharedInterests",
+          "total",
+          "weights"
+        ]
+      },
+      "ConversationParticipant": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "photo": {
+            "$ref": "#/components/schemas/PhotoSummary"
+          }
+        },
+        "required": [
+          "displayName",
+          "userId"
+        ]
+      },
+      "ConversationResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "matchId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "matchedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "otherUser": {
+            "$ref": "#/components/schemas/ConversationParticipant"
+          },
+          "lastMessage": {
+            "$ref": "#/components/schemas/MessageResponse"
+          },
+          "unreadCount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "id",
+          "matchId",
+          "matchedAt",
+          "otherUser",
+          "unreadCount"
         ]
       }
     }

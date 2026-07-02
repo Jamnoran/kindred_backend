@@ -4,6 +4,10 @@ import com.kindred.api.auth.EmailAlreadyRegisteredException
 import com.kindred.api.auth.EmailNotVerifiedException
 import com.kindred.api.auth.InvalidVerificationTokenException
 import com.kindred.api.auth.UnderageSignupException
+import com.kindred.api.chat.ConversationNotFoundException
+import com.kindred.api.discovery.AlreadyReactedException
+import com.kindred.api.discovery.CannotReactToSelfException
+import com.kindred.api.discovery.ReactionTargetNotFoundException
 import com.kindred.api.media.UnsupportedImageTypeException
 import com.kindred.api.photo.InvalidStorageKeyException
 import com.kindred.api.photo.PhotoLimitReachedException
@@ -44,6 +48,18 @@ class ApiExceptionHandler {
 
     @ExceptionHandler(LocationNotSetException::class)
     fun locationNotSet(e: LocationNotSetException) = problem(HttpStatus.CONFLICT, e.message)
+
+    @ExceptionHandler(CannotReactToSelfException::class)
+    fun reactToSelf(e: CannotReactToSelfException) = problem(HttpStatus.UNPROCESSABLE_ENTITY, e.message)
+
+    @ExceptionHandler(AlreadyReactedException::class)
+    fun alreadyReacted(e: AlreadyReactedException) = problem(HttpStatus.CONFLICT, e.message)
+
+    @ExceptionHandler(ReactionTargetNotFoundException::class)
+    fun reactionTarget(e: ReactionTargetNotFoundException) = problem(HttpStatus.NOT_FOUND, e.message)
+
+    @ExceptionHandler(ConversationNotFoundException::class)
+    fun conversationNotFound(e: ConversationNotFoundException) = problem(HttpStatus.NOT_FOUND, e.message)
 
     @ExceptionHandler(InvalidStorageKeyException::class)
     fun invalidStorageKey(e: InvalidStorageKeyException) = problem(HttpStatus.BAD_REQUEST, e.message)
