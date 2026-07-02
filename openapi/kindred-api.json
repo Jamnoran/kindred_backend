@@ -395,6 +395,47 @@
         }
       }
     },
+    "/api/v1/conversations/{id}/media-uploads": {
+      "post": {
+        "tags": [
+          "chat-controller"
+        ],
+        "operationId": "requestMediaUpload",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatMediaUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresignedUpload"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/verify-email": {
       "post": {
         "tags": [
@@ -558,6 +599,37 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/MetaResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/media/{id}/url": {
+      "get": {
+        "tags": [
+          "chat-media-controller"
+        ],
+        "operationId": "signedUrl",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresignedDownload"
                 }
               }
             }
@@ -1112,11 +1184,13 @@
             "type": "string",
             "maxLength": 2000,
             "minLength": 0
+          },
+          "mediaKey": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
           }
-        },
-        "required": [
-          "body"
-        ]
+        }
       },
       "MessageResponse": {
         "type": "object",
@@ -1132,6 +1206,10 @@
           "body": {
             "type": "string"
           },
+          "mediaId": {
+            "type": "integer",
+            "format": "int64"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -1145,6 +1223,38 @@
           "createdAt",
           "id",
           "senderId"
+        ]
+      },
+      "ChatMediaUploadRequest": {
+        "type": "object",
+        "properties": {
+          "contentType": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "contentType"
+        ]
+      },
+      "PresignedUpload": {
+        "type": "object",
+        "properties": {
+          "uploadUrl": {
+            "type": "string"
+          },
+          "storageKey": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "expiresAt",
+          "storageKey",
+          "uploadUrl"
         ]
       },
       "VerifyEmailRequest": {
@@ -1274,6 +1384,22 @@
           "openApiSpec",
           "source",
           "version"
+        ]
+      },
+      "PresignedDownload": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "expiresAt",
+          "url"
         ]
       },
       "PhotoSummary": {
@@ -1438,10 +1564,14 @@
           },
           "photo": {
             "$ref": "#/components/schemas/PhotoSummary"
+          },
+          "online": {
+            "type": "boolean"
           }
         },
         "required": [
           "displayName",
+          "online",
           "userId"
         ]
       },

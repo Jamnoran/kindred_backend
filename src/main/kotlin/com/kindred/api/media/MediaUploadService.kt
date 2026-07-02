@@ -1,8 +1,10 @@
 package com.kindred.api.media
 
 import org.springframework.stereotype.Service
+import software.amazon.awssdk.services.s3.model.GetObjectRequest
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest
 import java.security.SecureRandom
 import java.time.Clock
@@ -15,6 +17,11 @@ class UnsupportedImageTypeException(contentType: String) :
 data class PresignedUpload(
     val uploadUrl: String,
     val storageKey: String,
+    val expiresAt: Instant,
+)
+
+data class PresignedDownload(
+    val url: String,
     val expiresAt: Instant,
 )
 
@@ -34,18 +41,38 @@ class MediaUploadService(
     companion object {
         val ALLOWED_IMAGE_TYPES = setOf("image/jpeg", "image/png", "image/webp")
         val UPLOAD_URL_TTL: Duration = Duration.ofMinutes(10)
+        /** Chat media is only ever served through these (§6B). */
+        val DOWNLOAD_URL_TTL: Duration = Duration.ofMinutes(5)
         const val QUARANTINE_PREFIX = "quarantine/"
+        const val CHAT_QUARANTINE_PREFIX = "chat-quarantine/"
     }
 
     private val random = SecureRandom()
 
-    fun presignProfilePhotoUpload(userId: Long, contentType: String): PresignedUpload {
+    fun presignProfilePhotoUpload(userId: Long, contentType: String): PresignedUpload =
+        presignUpload(QUARANTINE_PREFIX, userId, contentType)
+
+    fun presignChatImageUpload(userId: Long, contentType: String): PresignedUpload =
+        presignUpload(CHAT_QUARANTINE_PREFIX, userId, contentType)
+
+    /** Short-lived signed GET — the only way private chat media is ever fetched. */
+    fun presignDownload(storageKey: String): PresignedDownload {
+        val presigned = presigner.presignGetObject(
+            GetObjectPresignRequest.builder()
+                .signatureDuration(DOWNLOAD_URL_TTL)
+                .getObjectRequest(GetObjectRequest.builder().bucket(props.bucket).key(storageKey).build())
+                .build(),
+        )
+        return PresignedDownload(url = presigned.url().toString(), expiresAt = clock.instant().plus(DOWNLOAD_URL_TTL))
+    }
+
+    private fun presignUpload(prefix: String, userId: Long, contentType: String): PresignedUpload {
         val normalized = contentType.trim().lowercase()
         if (normalized !in ALLOWED_IMAGE_TYPES) {
             throw UnsupportedImageTypeException(contentType)
         }
         // Random, non-enumerable key (§6); user id deliberately not part of it
-        val key = QUARANTINE_PREFIX + ByteArray(16).also(random::nextBytes).joinToString("") { "%02x".format(it) }
+        val key = prefix + ByteArray(16).also(random::nextBytes).joinToString("") { "%02x".format(it) }
         val objectRequest = PutObjectRequest.builder()
             .bucket(props.bucket)
             .key(key)

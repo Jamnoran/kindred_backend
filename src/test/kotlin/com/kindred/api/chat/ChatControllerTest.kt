@@ -28,6 +28,9 @@ class ChatControllerTest {
     @MockitoBean
     lateinit var chatService: ChatService
 
+    @MockitoBean
+    lateinit var chatMediaService: ChatMediaService
+
     private val alice = KindredUserDetails(id = 1L, email = "alice@example.com", passwordHash = "h", emailVerified = true)
 
     @Test
@@ -37,8 +40,8 @@ class ChatControllerTest {
 
     @Test
     fun `send returns the created message`() {
-        whenever(chatService.send(1L, 7L, "hello")).thenReturn(
-            MessageResponse(id = 100L, senderId = 1L, body = "hello", createdAt = Instant.now(), readAt = null),
+        whenever(chatService.send(1L, 7L, "hello", null)).thenReturn(
+            MessageResponse(id = 100L, senderId = 1L, body = "hello", mediaId = null, createdAt = Instant.now(), readAt = null),
         )
 
         mockMvc.perform(
@@ -53,6 +56,8 @@ class ChatControllerTest {
 
     @Test
     fun `blank messages are rejected`() {
+        whenever(chatService.send(1L, 7L, "   ", null)).thenThrow(EmptyMessageException())
+
         mockMvc.perform(
             post("/api/v1/conversations/7/messages").with(user(alice)).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)

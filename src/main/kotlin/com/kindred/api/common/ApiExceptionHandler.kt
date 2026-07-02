@@ -5,6 +5,9 @@ import com.kindred.api.auth.EmailNotVerifiedException
 import com.kindred.api.auth.InvalidVerificationTokenException
 import com.kindred.api.auth.UnderageSignupException
 import com.kindred.api.chat.ConversationNotFoundException
+import com.kindred.api.chat.EmptyMessageException
+import com.kindred.api.chat.MediaNotFoundException
+import com.kindred.api.chat.MediaNotReadyException
 import com.kindred.api.discovery.AlreadyReactedException
 import com.kindred.api.discovery.CannotReactToSelfException
 import com.kindred.api.discovery.ReactionTargetNotFoundException
@@ -60,6 +63,15 @@ class ApiExceptionHandler {
 
     @ExceptionHandler(ConversationNotFoundException::class)
     fun conversationNotFound(e: ConversationNotFoundException) = problem(HttpStatus.NOT_FOUND, e.message)
+
+    @ExceptionHandler(EmptyMessageException::class)
+    fun emptyMessage(e: EmptyMessageException) = problem(HttpStatus.BAD_REQUEST, e.message)
+
+    @ExceptionHandler(MediaNotFoundException::class)
+    fun mediaNotFound(e: MediaNotFoundException) = problem(HttpStatus.NOT_FOUND, e.message)
+
+    @ExceptionHandler(MediaNotReadyException::class)
+    fun mediaNotReady(e: MediaNotReadyException) = problem(HttpStatus.CONFLICT, e.message)
 
     @ExceptionHandler(InvalidStorageKeyException::class)
     fun invalidStorageKey(e: InvalidStorageKeyException) = problem(HttpStatus.BAD_REQUEST, e.message)

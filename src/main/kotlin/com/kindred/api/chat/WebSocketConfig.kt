@@ -17,11 +17,13 @@ import org.springframework.messaging.Message as MessagingMessage
 
 /** Event envelope broadcast on /topic/conversations/{id}. */
 data class ChatEvent(
-    val type: String, // message | read | typing
+    val type: String, // message | read | typing | presence
     val conversationId: Long,
     val message: MessageResponse? = null,
     val readerId: Long? = null,
     val typingUserId: Long? = null,
+    val presenceUserId: Long? = null,
+    val online: Boolean? = null,
 )
 
 /**
@@ -32,7 +34,7 @@ data class ChatEvent(
  */
 @Configuration
 @EnableWebSocketMessageBroker
-class WebSocketConfig(private val chatService: ChatService) : WebSocketMessageBrokerConfigurer {
+class WebSocketConfig(private val access: ConversationAccess) : WebSocketMessageBrokerConfigurer {
 
     override fun registerStompEndpoints(registry: StompEndpointRegistry) {
         registry.addEndpoint("/ws")
@@ -44,11 +46,11 @@ class WebSocketConfig(private val chatService: ChatService) : WebSocketMessageBr
     }
 
     override fun configureClientInboundChannel(registration: ChannelRegistration) {
-        registration.interceptors(SubscriptionAuthInterceptor(chatService))
+        registration.interceptors(SubscriptionAuthInterceptor(access))
     }
 }
 
-class SubscriptionAuthInterceptor(private val chatService: ChatService) : ChannelInterceptor {
+class SubscriptionAuthInterceptor(private val access: ConversationAccess) : ChannelInterceptor {
 
     companion object {
         private val CONVERSATION_TOPIC = Regex("/topic/conversations/(\\d+)(/.*)?")
@@ -67,7 +69,7 @@ class SubscriptionAuthInterceptor(private val chatService: ChatService) : Channe
             val match = CONVERSATION_TOPIC.matchEntire(accessor.destination ?: "")
                 ?: throw org.springframework.messaging.MessagingException("unknown destination")
             // throws ConversationNotFoundException for non-members — subscription denied
-            chatService.requireMembership(userId, match.groupValues[1].toLong())
+            access.requireMembership(userId, match.groupValues[1].toLong())
         }
         return message
     }

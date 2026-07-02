@@ -21,9 +21,13 @@ class ChatService(
     private val matches: MatchRepository,
     private val profiles: ProfileRepository,
     private val photos: PhotoRepository,
+    private val access: ConversationAccess,
+    private val chatMedia: ChatMediaService,
+    private val presence: PresenceTracker,
     private val clock: Clock,
     // lazy to break the cycle with WebSocketConfig; absent in slice tests
     private val messaging: ObjectProvider<SimpMessagingTemplate>,
+    private val relay: ObjectProvider<ChatEventPublisher>,
     @param:Value("\${kindred.media.public-base-url}") private val publicBaseUrl: String,
 ) {
 
@@ -50,6 +54,7 @@ class ChatService(
                     userId = otherId,
                     displayName = profile.displayName,
                     photo = PhotoSummary.from(primaryPhotos[otherId], publicBaseUrl),
+                    online = presence.isOnline(otherId),
                 ),
                 lastMessage = messages.findFirstByConversationIdOrderByIdDesc(convoId)?.let(MessageResponse::from),
                 unreadCount = messages.countByConversationIdAndSenderIdNotAndReadAtIsNull(convoId, userId),
@@ -59,18 +64,25 @@ class ChatService(
 
     @Transactional(readOnly = true)
     fun messages(userId: Long, conversationId: Long, before: Long?, limit: Int): List<MessageResponse> {
-        requireMembership(userId, conversationId)
+        access.requireMembership(userId, conversationId)
         return messages.page(conversationId, before, PageRequest.of(0, limit)).map(MessageResponse::from)
     }
 
+    /** Text, image, or both — an image goes through the §6B pipeline before it's viewable. */
     @Transactional
-    fun send(userId: Long, conversationId: Long, body: String): MessageResponse {
-        requireMembership(userId, conversationId)
+    fun send(userId: Long, conversationId: Long, body: String?, mediaKey: String? = null): MessageResponse {
+        access.requireMembership(userId, conversationId)
+        val trimmed = body?.trim()?.takeIf { it.isNotEmpty() }
+        if (trimmed == null && mediaKey == null) {
+            throw EmptyMessageException()
+        }
+        val attached = mediaKey?.let { chatMedia.attach(userId, conversationId, it) }
         val message = messages.save(
             Message(
                 conversationId = conversationId,
                 senderId = userId,
-                body = body.trim(),
+                body = trimmed,
+                mediaId = attached?.id,
                 createdAt = clock.instant(),
             ),
         )
@@ -82,7 +94,7 @@ class ChatService(
     /** Marks everything from the other participant as read; returns how many changed. */
     @Transactional
     fun markRead(userId: Long, conversationId: Long): Int {
-        requireMembership(userId, conversationId)
+        access.requireMembership(userId, conversationId)
         val changed = messages.markRead(conversationId, userId, clock.instant())
         if (changed > 0) {
             broadcast(ChatEvent(type = "read", conversationId = conversationId, readerId = userId))
@@ -90,18 +102,19 @@ class ChatService(
         return changed
     }
 
+    /** Via Redis when the relay is up (multi-instance fan-out), else the local broker. */
     fun broadcast(event: ChatEvent) {
-        messaging.ifAvailable?.convertAndSend("/topic/conversations/${event.conversationId}", event)
+        val publisher = relay.ifAvailable
+        if (publisher != null) {
+            publisher.publish(event)
+        } else {
+            messaging.ifAvailable?.convertAndSend("/topic/conversations/${event.conversationId}", event)
+        }
     }
 
-    /**
-     * AuthZ on every read and send (§8): non-membership is indistinguishable from
-     * nonexistence, so conversation ids can't be probed.
-     */
-    @Transactional(readOnly = true)
-    fun requireMembership(userId: Long, conversationId: Long) {
-        val convo = conversations.findById(conversationId).orElseThrow { ConversationNotFoundException() }
-        val match = matches.findById(convo.matchId).orElseThrow { ConversationNotFoundException() }
-        if (!match.involves(userId)) throw ConversationNotFoundException()
+    fun conversationIdsOf(userId: Long): List<Long> {
+        val matchIds = matches.findAllByUserAOrUserB(userId, userId).mapNotNull { it.id }
+        if (matchIds.isEmpty()) return emptyList()
+        return conversations.findAllByMatchIdIn(matchIds).mapNotNull { it.id }
     }
 }

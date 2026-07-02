@@ -25,3 +25,8 @@ org:
       enabled: false
     dashboard:
       enabled: false
+
+# no Redis here — chat events go straight to the local STOMP broker
+kindred:
+  chat:
+    redis-relay: false

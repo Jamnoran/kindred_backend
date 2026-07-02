@@ -41,10 +41,10 @@ Legend: `[ ]` todo · `[x]` done · `[~]` in progress / partially done
 
 ## Phase 3 — Chat
 
-- [~] Spring WebSocket (STOMP) + Redis relay (STOMP live: /ws endpoint, subscribe authz by membership, message/read/typing events on /topic/conversations/{id}; Redis relay for multi-instance still pending)
+- [x] Spring WebSocket (STOMP) + Redis relay
 - [x] Conversations + messages (authz by match membership on every read/send)
-- [ ] Private chat-image pipeline + short-lived signed URLs (5-min expiry)
-- [~] Presence / typing / read receipts (typing + read receipts done; presence pending)
+- [x] Private chat-image pipeline + short-lived signed URLs (5-min expiry)
+- [x] Presence / typing / read receipts
 
 ## Phase 4 — Safety & legal
 
@@ -63,6 +63,24 @@ Legend: `[ ]` todo · `[x]` done · `[~]` in progress / partially done
 
 ## Work log
 
+- **2026-07-02** — Phase 3 finished. Chat images (§6B): `POST
+  /conversations/{id}/media-uploads` presigns a PUT into `chat-quarantine/`
+  (members only); `mediaKey` on send creates a `media` row + message and enqueues the
+  same validate → re-encode/EXIF-strip → scan pipeline (single bounded size) which
+  promotes to the private `chat-media/` prefix; `GET /media/{id}/url` returns a
+  **5-minute signed URL**, participants + approved only, authorized on every fetch —
+  pending/rejected media is never served. Redis relay: `ChatEvent`s publish to the
+  `kindred:chat-events` pub/sub channel and every instance's listener re-delivers to
+  its local simple broker (disabled via `kindred.chat.redis-relay=false` where Redis
+  is absent → direct local broadcast). **Verified live against a real Redis**: event
+  observed on the channel via `redis-cli subscribe` while the app consumed it.
+  Presence: connect/disconnect listeners track sessions per user, broadcast
+  presence events to the user's conversation topics, and `otherUser.online` rides on
+  `GET /conversations` — presence state + broker are per-instance (Redis-backed
+  presence is a scale-out follow-up, the relay already covers events). Remaining
+  §6B nicety not built: optional view-once/expiry (`media.expires_at` is in the
+  schema, unused). STOMP path still not driven by a real client — cover it in the
+  compose smoke test.
 - **2026-07-02** — Phase 2 complete + Phase 3 REST chat (`discovery/` + `chat/`).
   Discovery: SQL hard filters (age via `TIMESTAMPDIFF`, viewer's distance limit via
   `ST_Distance_Sphere`, no repeats, blocks pre-severed both ways, deleted/unverified

@@ -26,10 +26,13 @@ class ChatServiceTest {
     private val profiles: ProfileRepository = mock()
     private val photos: PhotoRepository = mock()
     private val messaging: org.springframework.beans.factory.ObjectProvider<org.springframework.messaging.simp.SimpMessagingTemplate> = mock()
+    private val relay: org.springframework.beans.factory.ObjectProvider<ChatEventPublisher> = mock()
+    private val chatMedia: ChatMediaService = mock()
     private val now = Instant.parse("2026-07-02T12:00:00Z")
     private val service = ChatService(
         conversations, messages, matches, profiles, photos,
-        Clock.fixed(now, ZoneOffset.UTC), messaging, "http://cdn.test",
+        ConversationAccess(conversations, matches), chatMedia, PresenceTracker(),
+        Clock.fixed(now, ZoneOffset.UTC), messaging, relay, "http://cdn.test",
     )
 
     private fun stubConversation(convoId: Long = 7L, matchId: Long = 3L, userA: Long = 1L, userB: Long = 2L) {
@@ -47,6 +50,29 @@ class ChatServiceTest {
         assertEquals("hello there", sent.body)
         assertEquals(1L, sent.senderId)
         assertEquals(now, sent.createdAt)
+    }
+
+    @Test
+    fun `a message needs a body or a media key`() {
+        stubConversation()
+
+        assertThrows<EmptyMessageException> { service.send(1L, 7L, "   ", null) }
+        verify(messages, never()).save(any())
+    }
+
+    @Test
+    fun `an image-only message attaches media through the pipeline`() {
+        stubConversation()
+        val key = "chat-quarantine/" + "ab".repeat(16)
+        whenever(chatMedia.attach(1L, 7L, key)).thenReturn(
+            Media(id = 30L, storageKey = key, ownerUserId = 1L, conversationId = 7L),
+        )
+        whenever(messages.save(any())).thenAnswer { (it.arguments[0] as Message).apply { id = 101L } }
+
+        val sent = service.send(1L, 7L, null, key)
+
+        assertEquals(30L, sent.mediaId)
+        assertEquals(null, sent.body)
     }
 
     @Test
