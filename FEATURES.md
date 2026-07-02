@@ -24,7 +24,7 @@ Legend: `[ ]` todo · `[x]` done · `[~]` in progress / partially done
 
 ## Phase 1 — Profiles + image pipeline
 
-- [ ] Profile CRUD (bio, looking_for, interests, location POINT + spatial queries)
+- [x] Profile CRUD (bio, looking_for, interests, location POINT + spatial queries)
 - [ ] Pre-signed upload → `quarantine/` prefix (AWS SDK v2 against R2/MinIO)
 - [ ] JobRunr worker: magic-byte validation, re-encode (scrimage), EXIF strip, responsive sizes, blurhash
 - [ ] NSFW + CSAM scanning hooks (stub providers; real ones before launch — see §9)
@@ -63,6 +63,16 @@ Legend: `[ ]` todo · `[x]` done · `[~]` in progress / partially done
 
 ## Work log
 
+- **2026-07-02** — Phase 1 profile CRUD (`profile/` package): own-profile
+  GET/PUT (PUT = full replace) with bio, looking_for (JSON column via Hibernate
+  `@JdbcTypeCode(JSON)`), interests (V3 seeds a ~36-slug taxonomy; unknown slugs → 400;
+  `GET /interests` lists it), and location: `PUT /profile/location` writes the POINT
+  via native `ST_SRID(POINT(lng, lat), 4326)` (no hibernate-spatial needed) with
+  per-profile visibility, `GET /profiles/nearby?radiusKm=` runs `ST_Distance_Sphere`
+  against the caller's stored location (hidden profiles excluded, distances rounded to
+  whole km to resist trilateration, capped at 100 results). Verified over HTTP on H2
+  except the two native spatial queries — **those need the MySQL smoke test** noted
+  below. Nearby does not yet apply blocks (Phase 4) or preference filters (Phase 2).
 - **2026-07-02** — Phase 0 finished: full auth slice (`auth/` package) — signup with
   18+ gate + email normalization, email verification via one-shot expiring tokens
   (`V2__email_verification_tokens.sql`, logging mailer stub until SMTP), JSON

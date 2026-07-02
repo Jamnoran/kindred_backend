@@ -29,6 +29,84 @@
         }
       }
     },
+    "/api/v1/profile": {
+      "get": {
+        "tags": [
+          "profile-controller"
+        ],
+        "operationId": "ownProfile",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "profile-controller"
+        ],
+        "operationId": "upsertProfile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/profile/location": {
+      "put": {
+        "tags": [
+          "profile-controller"
+        ],
+        "operationId": "updateLocation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLocationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/verify-email": {
       "post": {
         "tags": [
@@ -142,6 +220,43 @@
         }
       }
     },
+    "/api/v1/profiles/nearby": {
+      "get": {
+        "tags": [
+          "profile-controller"
+        ],
+        "operationId": "nearby",
+        "parameters": [
+          {
+            "name": "radiusKm",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NearbyProfileResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/meta": {
       "get": {
         "tags": [
@@ -155,6 +270,29 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/MetaResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/interests": {
+      "get": {
+        "tags": [
+          "profile-controller"
+        ],
+        "operationId": "interests",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InterestResponse"
+                  }
                 }
               }
             }
@@ -185,6 +323,135 @@
   },
   "components": {
     "schemas": {
+      "UpdateProfileRequest": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "bio": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          },
+          "lookingFor": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "minItems": 0
+          },
+          "interests": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "minItems": 0
+          }
+        },
+        "required": [
+          "displayName"
+        ]
+      },
+      "InterestResponse": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "slug"
+        ]
+      },
+      "ProfileResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "bio": {
+            "type": "string"
+          },
+          "lookingFor": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "interests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InterestResponse"
+            }
+          },
+          "locationSet": {
+            "type": "boolean"
+          },
+          "locationVisibility": {
+            "type": "string",
+            "enum": [
+              "exact",
+              "approximate",
+              "hidden"
+            ]
+          },
+          "lastActiveAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "displayName",
+          "interests",
+          "lastActiveAt",
+          "locationSet",
+          "locationVisibility",
+          "lookingFor",
+          "userId"
+        ]
+      },
+      "UpdateLocationRequest": {
+        "type": "object",
+        "properties": {
+          "lat": {
+            "type": "number",
+            "format": "double",
+            "maximum": 90,
+            "minimum": -90
+          },
+          "lng": {
+            "type": "number",
+            "format": "double",
+            "maximum": 180,
+            "minimum": -180
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "exact",
+              "approximate",
+              "hidden"
+            ]
+          }
+        },
+        "required": [
+          "lat",
+          "lng"
+        ]
+      },
       "VerifyEmailRequest": {
         "type": "object",
         "properties": {
@@ -268,6 +535,27 @@
         "required": [
           "email",
           "password"
+        ]
+      },
+      "NearbyProfileResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "distanceKm": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "displayName",
+          "distanceKm",
+          "userId"
         ]
       },
       "MetaResponse": {

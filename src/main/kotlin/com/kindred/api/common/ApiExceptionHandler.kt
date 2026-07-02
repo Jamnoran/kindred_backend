@@ -4,6 +4,10 @@ import com.kindred.api.auth.EmailAlreadyRegisteredException
 import com.kindred.api.auth.EmailNotVerifiedException
 import com.kindred.api.auth.InvalidVerificationTokenException
 import com.kindred.api.auth.UnderageSignupException
+import com.kindred.api.profile.LocationNotSetException
+import com.kindred.api.profile.ProfileNotFoundException
+import com.kindred.api.profile.UnknownInterestException
+import jakarta.validation.ConstraintViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ProblemDetail
 import org.springframework.http.converter.HttpMessageNotReadableException
@@ -27,6 +31,19 @@ class ApiExceptionHandler {
 
     @ExceptionHandler(EmailNotVerifiedException::class)
     fun emailNotVerified(e: EmailNotVerifiedException) = problem(HttpStatus.FORBIDDEN, e.message)
+
+    @ExceptionHandler(ProfileNotFoundException::class)
+    fun profileNotFound(e: ProfileNotFoundException) = problem(HttpStatus.NOT_FOUND, e.message)
+
+    @ExceptionHandler(UnknownInterestException::class)
+    fun unknownInterest(e: UnknownInterestException) = problem(HttpStatus.BAD_REQUEST, e.message)
+
+    @ExceptionHandler(LocationNotSetException::class)
+    fun locationNotSet(e: LocationNotSetException) = problem(HttpStatus.CONFLICT, e.message)
+
+    // Bean-validation failures on @RequestParam / @PathVariable arguments
+    @ExceptionHandler(ConstraintViolationException::class)
+    fun invalidParams(e: ConstraintViolationException) = problem(HttpStatus.BAD_REQUEST, e.message)
 
     // Covers BadCredentialsException from the login endpoint; never echo details
     @ExceptionHandler(AuthenticationException::class)
