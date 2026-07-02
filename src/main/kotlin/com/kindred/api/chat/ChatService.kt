@@ -6,8 +6,10 @@ import com.kindred.api.photo.ModerationStatus
 import com.kindred.api.photo.Photo
 import com.kindred.api.photo.PhotoRepository
 import com.kindred.api.profile.ProfileRepository
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.domain.PageRequest
+import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
@@ -20,6 +22,8 @@ class ChatService(
     private val profiles: ProfileRepository,
     private val photos: PhotoRepository,
     private val clock: Clock,
+    // lazy to break the cycle with WebSocketConfig; absent in slice tests
+    private val messaging: ObjectProvider<SimpMessagingTemplate>,
     @param:Value("\${kindred.media.public-base-url}") private val publicBaseUrl: String,
 ) {
 
@@ -70,14 +74,24 @@ class ChatService(
                 createdAt = clock.instant(),
             ),
         )
-        return MessageResponse.from(message)
+        val response = MessageResponse.from(message)
+        broadcast(ChatEvent(type = "message", conversationId = conversationId, message = response))
+        return response
     }
 
     /** Marks everything from the other participant as read; returns how many changed. */
     @Transactional
     fun markRead(userId: Long, conversationId: Long): Int {
         requireMembership(userId, conversationId)
-        return messages.markRead(conversationId, userId, clock.instant())
+        val changed = messages.markRead(conversationId, userId, clock.instant())
+        if (changed > 0) {
+            broadcast(ChatEvent(type = "read", conversationId = conversationId, readerId = userId))
+        }
+        return changed
+    }
+
+    fun broadcast(event: ChatEvent) {
+        messaging.ifAvailable?.convertAndSend("/topic/conversations/${event.conversationId}", event)
     }
 
     /**

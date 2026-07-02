@@ -41,10 +41,10 @@ Legend: `[ ]` todo · `[x]` done · `[~]` in progress / partially done
 
 ## Phase 3 — Chat
 
-- [ ] Spring WebSocket (STOMP) + Redis relay
+- [~] Spring WebSocket (STOMP) + Redis relay (STOMP live: /ws endpoint, subscribe authz by membership, message/read/typing events on /topic/conversations/{id}; Redis relay for multi-instance still pending)
 - [x] Conversations + messages (authz by match membership on every read/send)
 - [ ] Private chat-image pipeline + short-lived signed URLs (5-min expiry)
-- [~] Presence / typing / read receipts (read receipts done via REST; presence/typing need the WebSocket item)
+- [~] Presence / typing / read receipts (typing + read receipts done; presence pending)
 
 ## Phase 4 — Safety & legal
 
@@ -79,8 +79,12 @@ Legend: `[ ]` todo · `[x]` done · `[~]` in progress / partially done
   every read/send, non-membership = 404 (no probing). Verified: scoring/matching/
   authz unit tests + full HTTP smoke on H2 (two users → mutual like → match → chat →
   read receipts → outsider 404). **The discovery SQL itself needs the MySQL smoke
-  test** (H2 lacks `ST_Distance_Sphere`). Still open in Phase 3: STOMP + Redis relay
-  (then presence/typing), private chat images. Likes have no rate limit yet (Phase 4).
+  test** (H2 lacks `ST_Distance_Sphere`). STOMP added after: `/ws` handshake (session
+  cookie), SUBSCRIBE to `/topic/conversations/{id}` gated by membership, send/read/
+  typing broadcast as `ChatEvent`s, typing via `/app/conversations/{id}/typing` —
+  in-memory simple broker only (Redis relay pending), and the WS path is
+  compile/boot-verified, not driven by a client yet. Still open in Phase 3: Redis
+  relay, presence, private chat images. Likes have no rate limit yet (Phase 4).
 - **2026-07-02** — Phase 1 image pipeline (`photo/` + `media/` additions): JobRunr
   worker (in-process, MySQL-backed via the main DataSource; JobRequest pattern,
   idempotent on retry). `POST /photos {storageKey}` records a pending row and
