@@ -1,0 +1,27 @@
+# Profile used only by the `generateOpenApiDocs` Gradle task: boots the app with
+# no MySQL/Redis so the spec can be exported anywhere (CI included). H2 satisfies
+# the datasource; nothing ever queries it.
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.session.SessionAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+  flyway:
+    enabled: false
+  datasource:
+    url: jdbc:h2:mem:openapi;MODE=MySQL
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+
+# no worker in the spec-export run; job storage still initializes (against H2)
+org:
+  jobrunr:
+    background-job-server:
+      enabled: false
+    dashboard:
+      enabled: false

@@ -1,0 +1,1484 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Kindred API",
+    "description": "Open, transparent dating platform API. No hidden ranking, no feature paywalls, auditable code.",
+    "license": {
+      "name": "AGPL-3.0"
+    },
+    "version": "v1"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Generated server url"
+    }
+  ],
+  "paths": {
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "auth-controller"
+        ],
+        "summary": "Invalidate the current session",
+        "operationId": "logout",
+        "responses": {
+          "204": {
+            "description": "Logged out"
+          }
+        }
+      }
+    },
+    "/api/v1/profile": {
+      "get": {
+        "tags": [
+          "profile-controller"
+        ],
+        "operationId": "ownProfile",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "profile-controller"
+        ],
+        "operationId": "upsertProfile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/profile/location": {
+      "put": {
+        "tags": [
+          "profile-controller"
+        ],
+        "operationId": "updateLocation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLocationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/preferences": {
+      "get": {
+        "tags": [
+          "discovery-controller"
+        ],
+        "operationId": "preferences",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferencesResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "discovery-controller"
+        ],
+        "operationId": "updatePreferences",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePreferencesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferencesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/photos": {
+      "get": {
+        "tags": [
+          "photo-controller"
+        ],
+        "operationId": "list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PhotoResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "photo-controller"
+        ],
+        "operationId": "submit",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePhotoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/media/profile-photo-uploads": {
+      "post": {
+        "tags": [
+          "media-upload-controller"
+        ],
+        "operationId": "createProfilePhotoUpload",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfilePhotoUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfilePhotoUploadResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/likes": {
+      "post": {
+        "tags": [
+          "discovery-controller"
+        ],
+        "operationId": "react",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReactRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReactResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conversations/{id}/read": {
+      "post": {
+        "tags": [
+          "chat-controller"
+        ],
+        "operationId": "markRead",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "format": "int32"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conversations/{id}/messages": {
+      "get": {
+        "tags": [
+          "chat-controller"
+        ],
+        "operationId": "messages",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MessageResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "chat-controller"
+        ],
+        "operationId": "send",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendMessageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/verify-email": {
+      "post": {
+        "tags": [
+          "auth-controller"
+        ],
+        "operationId": "verifyEmail",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/signup": {
+      "post": {
+        "tags": [
+          "auth-controller"
+        ],
+        "operationId": "signup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/resend-verification": {
+      "post": {
+        "tags": [
+          "auth-controller"
+        ],
+        "operationId": "resendVerification",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendVerificationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "auth-controller"
+        ],
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/profiles/nearby": {
+      "get": {
+        "tags": [
+          "profile-controller"
+        ],
+        "operationId": "nearby",
+        "parameters": [
+          {
+            "name": "radiusKm",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NearbyProfileResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/meta": {
+      "get": {
+        "tags": [
+          "meta-controller"
+        ],
+        "operationId": "meta",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetaResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/likes/received": {
+      "get": {
+        "tags": [
+          "discovery-controller"
+        ],
+        "operationId": "receivedLikes",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReceivedLikeResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/interests": {
+      "get": {
+        "tags": [
+          "profile-controller"
+        ],
+        "operationId": "interests",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InterestResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/discovery": {
+      "get": {
+        "tags": [
+          "discovery-controller"
+        ],
+        "operationId": "discover",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DiscoveryCard"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conversations": {
+      "get": {
+        "tags": [
+          "chat-controller"
+        ],
+        "operationId": "conversations",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConversationResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "auth-controller"
+        ],
+        "operationId": "me",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/photos/{id}": {
+      "delete": {
+        "tags": [
+          "photo-controller"
+        ],
+        "operationId": "delete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "UpdateProfileRequest": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "bio": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          },
+          "lookingFor": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "minItems": 0
+          },
+          "interests": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "minItems": 0
+          }
+        },
+        "required": [
+          "displayName"
+        ]
+      },
+      "InterestResponse": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "slug"
+        ]
+      },
+      "ProfileResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "bio": {
+            "type": "string"
+          },
+          "lookingFor": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "interests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InterestResponse"
+            }
+          },
+          "locationSet": {
+            "type": "boolean"
+          },
+          "locationVisibility": {
+            "type": "string",
+            "enum": [
+              "exact",
+              "approximate",
+              "hidden"
+            ]
+          },
+          "lastActiveAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "displayName",
+          "interests",
+          "lastActiveAt",
+          "locationSet",
+          "locationVisibility",
+          "lookingFor",
+          "userId"
+        ]
+      },
+      "UpdateLocationRequest": {
+        "type": "object",
+        "properties": {
+          "lat": {
+            "type": "number",
+            "format": "double",
+            "maximum": 90,
+            "minimum": -90
+          },
+          "lng": {
+            "type": "number",
+            "format": "double",
+            "maximum": 180,
+            "minimum": -180
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "exact",
+              "approximate",
+              "hidden"
+            ]
+          }
+        },
+        "required": [
+          "lat",
+          "lng"
+        ]
+      },
+      "UpdatePreferencesRequest": {
+        "type": "object",
+        "properties": {
+          "distanceKm": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 500,
+            "minimum": 1
+          },
+          "ageMin": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 120,
+            "minimum": 18
+          },
+          "ageMax": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 120,
+            "minimum": 18
+          },
+          "lookingFor": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "minItems": 0
+          },
+          "dealbreakers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "minItems": 0
+          },
+          "weights": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number",
+              "format": "double"
+            }
+          }
+        },
+        "required": [
+          "ageMax",
+          "ageMin",
+          "distanceKm"
+        ]
+      },
+      "PreferencesResponse": {
+        "type": "object",
+        "properties": {
+          "distanceKm": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "ageMin": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "ageMax": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lookingFor": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "dealbreakers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "weights": {
+            "$ref": "#/components/schemas/Weights"
+          }
+        },
+        "required": [
+          "ageMax",
+          "ageMin",
+          "dealbreakers",
+          "distanceKm",
+          "lookingFor",
+          "weights"
+        ]
+      },
+      "Weights": {
+        "type": "object",
+        "properties": {
+          "interests": {
+            "type": "number",
+            "format": "double"
+          },
+          "distance": {
+            "type": "number",
+            "format": "double"
+          },
+          "activity": {
+            "type": "number",
+            "format": "double"
+          },
+          "mutualFit": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": [
+          "activity",
+          "distance",
+          "interests",
+          "mutualFit"
+        ]
+      },
+      "CreatePhotoRequest": {
+        "type": "object",
+        "properties": {
+          "storageKey": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "storageKey"
+        ]
+      },
+      "PhotoResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ]
+          },
+          "isPrimary": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "blurhash": {
+            "type": "string"
+          },
+          "urls": {
+            "$ref": "#/components/schemas/PhotoUrls"
+          }
+        },
+        "required": [
+          "id",
+          "isPrimary",
+          "sortOrder",
+          "status"
+        ]
+      },
+      "PhotoUrls": {
+        "type": "object",
+        "properties": {
+          "thumb": {
+            "type": "string"
+          },
+          "card": {
+            "type": "string"
+          },
+          "full": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card",
+          "full",
+          "thumb"
+        ]
+      },
+      "ProfilePhotoUploadRequest": {
+        "type": "object",
+        "properties": {
+          "contentType": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "contentType"
+        ]
+      },
+      "ProfilePhotoUploadResponse": {
+        "type": "object",
+        "properties": {
+          "uploadUrl": {
+            "type": "string"
+          },
+          "storageKey": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "expiresAt",
+          "storageKey",
+          "uploadUrl"
+        ]
+      },
+      "ReactRequest": {
+        "type": "object",
+        "properties": {
+          "toUserId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "like",
+              "superlike",
+              "pass"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "toUserId"
+        ]
+      },
+      "ReactResponse": {
+        "type": "object",
+        "properties": {
+          "matched": {
+            "type": "boolean"
+          },
+          "matchId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "conversationId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "matched"
+        ]
+      },
+      "SendMessageRequest": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "body"
+        ]
+      },
+      "MessageResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "senderId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "body": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "readAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "createdAt",
+          "id",
+          "senderId"
+        ]
+      },
+      "VerifyEmailRequest": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
+      "UserResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "email": {
+            "type": "string"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "email",
+          "emailVerified",
+          "id"
+        ]
+      },
+      "SignupRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 72,
+            "minLength": 8
+          },
+          "dob": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": [
+          "dob",
+          "email",
+          "password"
+        ]
+      },
+      "ResendVerificationRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "minLength": 1
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "NearbyProfileResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "distanceKm": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "displayName",
+          "distanceKm",
+          "userId"
+        ]
+      },
+      "MetaResponse": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "openApiSpec": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "openApiSpec",
+          "source",
+          "version"
+        ]
+      },
+      "PhotoSummary": {
+        "type": "object",
+        "properties": {
+          "urls": {
+            "$ref": "#/components/schemas/PhotoUrls"
+          },
+          "blurhash": {
+            "type": "string"
+          }
+        }
+      },
+      "ReceivedLikeResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "like",
+              "superlike",
+              "pass"
+            ]
+          },
+          "likedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "photo": {
+            "$ref": "#/components/schemas/PhotoSummary"
+          }
+        },
+        "required": [
+          "displayName",
+          "kind",
+          "likedAt",
+          "userId"
+        ]
+      },
+      "DiscoveryCard": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "age": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "bio": {
+            "type": "string"
+          },
+          "lookingFor": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "interests": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "photo": {
+            "$ref": "#/components/schemas/PhotoSummary"
+          },
+          "distanceKm": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "score": {
+            "type": "number",
+            "format": "double"
+          },
+          "whyThisPerson": {
+            "$ref": "#/components/schemas/Factors"
+          }
+        },
+        "required": [
+          "age",
+          "displayName",
+          "interests",
+          "lookingFor",
+          "score",
+          "userId",
+          "whyThisPerson"
+        ]
+      },
+      "Factors": {
+        "type": "object",
+        "properties": {
+          "sharedInterests": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "interestScore": {
+            "type": "number",
+            "format": "double"
+          },
+          "distanceKm": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "distanceScore": {
+            "type": "number",
+            "format": "double"
+          },
+          "daysSinceActive": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "activityScore": {
+            "type": "number",
+            "format": "double"
+          },
+          "mutualFitScore": {
+            "type": "number",
+            "format": "double"
+          },
+          "weights": {
+            "$ref": "#/components/schemas/Weights"
+          },
+          "total": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": [
+          "activityScore",
+          "daysSinceActive",
+          "distanceScore",
+          "interestScore",
+          "mutualFitScore",
+          "sharedInterests",
+          "total",
+          "weights"
+        ]
+      },
+      "ConversationParticipant": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "photo": {
+            "$ref": "#/components/schemas/PhotoSummary"
+          }
+        },
+        "required": [
+          "displayName",
+          "userId"
+        ]
+      },
+      "ConversationResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "matchId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "matchedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "otherUser": {
+            "$ref": "#/components/schemas/ConversationParticipant"
+          },
+          "lastMessage": {
+            "$ref": "#/components/schemas/MessageResponse"
+          },
+          "unreadCount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "id",
+          "matchId",
+          "matchedAt",
+          "otherUser",
+          "unreadCount"
+        ]
+      }
+    }
+  }
+}
