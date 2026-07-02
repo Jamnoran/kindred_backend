@@ -25,7 +25,7 @@ Legend: `[ ]` todo · `[x]` done · `[~]` in progress / partially done
 ## Phase 1 — Profiles + image pipeline
 
 - [x] Profile CRUD (bio, looking_for, interests, location POINT + spatial queries)
-- [ ] Pre-signed upload → `quarantine/` prefix (AWS SDK v2 against R2/MinIO)
+- [x] Pre-signed upload → `quarantine/` prefix (AWS SDK v2 against R2/MinIO)
 - [ ] JobRunr worker: magic-byte validation, re-encode (scrimage), EXIF strip, responsive sizes, blurhash
 - [ ] NSFW + CSAM scanning hooks (stub providers; real ones before launch — see §9)
 - [ ] Serve profile photos via CDN with non-enumerable keys
@@ -63,6 +63,14 @@ Legend: `[ ]` todo · `[x]` done · `[~]` in progress / partially done
 
 ## Work log
 
+- **2026-07-02** — Phase 1 pre-signed uploads (`media/` package): AWS SDK v2
+  `S3Presigner` (path-style for MinIO, endpoint/creds from `kindred.s3.*` /
+  `S3_*` env, already wired in docker-compose). `POST /media/profile-photo-uploads`
+  returns a 10-min presigned PUT into `quarantine/` with a random 16-byte hex key
+  (never derived from user id; uploader recorded as object metadata server-side).
+  Content type allowlist: jpeg/png/webp → else 415. Presigning is offline, so the
+  service tests exercise the real presigner. No photos row is created yet — that
+  happens when the JobRunr worker (next task) promotes quarantine → `profiles/`.
 - **2026-07-02** — Phase 1 profile CRUD (`profile/` package): own-profile
   GET/PUT (PUT = full replace) with bio, looking_for (JSON column via Hibernate
   `@JdbcTypeCode(JSON)`), interests (V3 seeds a ~36-slug taxonomy; unknown slugs → 400;

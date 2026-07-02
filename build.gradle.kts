@@ -33,6 +33,8 @@ dependencies {
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-mysql")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9")
+    implementation(platform("software.amazon.awssdk:bom:2.29.52"))
+    implementation("software.amazon.awssdk:s3")
     runtimeOnly("com.mysql:mysql-connector-j")
     // only for the forked `generateOpenApiDocs` run (openapi profile) — not shipped in the jar
     developmentOnly("com.h2database:h2")

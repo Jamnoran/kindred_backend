@@ -46,3 +46,10 @@ kindred:
   version: ${KINDRED_VERSION:dev}
   # where verification-email links point (the web app routes them back to the API)
   web-base-url: ${WEB_BASE_URL:http://localhost:3000}
+  # object storage (R2 in prod, MinIO in dev/self-host — ARCHITECTURE.md §6)
+  s3:
+    endpoint: ${S3_ENDPOINT:http://localhost:9000}
+    region: ${S3_REGION:auto}
+    access-key: ${S3_ACCESS_KEY:kindred}
+    secret-key: ${S3_SECRET_KEY:kindred-secret}
+    bucket: ${S3_BUCKET:kindred-media}

@@ -107,6 +107,36 @@
         }
       }
     },
+    "/api/v1/media/profile-photo-uploads": {
+      "post": {
+        "tags": [
+          "media-upload-controller"
+        ],
+        "operationId": "createProfilePhotoUpload",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfilePhotoUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfilePhotoUploadResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/verify-email": {
       "post": {
         "tags": [
@@ -450,6 +480,38 @@
         "required": [
           "lat",
           "lng"
+        ]
+      },
+      "ProfilePhotoUploadRequest": {
+        "type": "object",
+        "properties": {
+          "contentType": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "contentType"
+        ]
+      },
+      "ProfilePhotoUploadResponse": {
+        "type": "object",
+        "properties": {
+          "uploadUrl": {
+            "type": "string"
+          },
+          "storageKey": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "expiresAt",
+          "storageKey",
+          "uploadUrl"
         ]
       },
       "VerifyEmailRequest": {

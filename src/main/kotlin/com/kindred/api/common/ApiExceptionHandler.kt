@@ -4,6 +4,7 @@ import com.kindred.api.auth.EmailAlreadyRegisteredException
 import com.kindred.api.auth.EmailNotVerifiedException
 import com.kindred.api.auth.InvalidVerificationTokenException
 import com.kindred.api.auth.UnderageSignupException
+import com.kindred.api.media.UnsupportedImageTypeException
 import com.kindred.api.profile.LocationNotSetException
 import com.kindred.api.profile.ProfileNotFoundException
 import com.kindred.api.profile.UnknownInterestException
@@ -40,6 +41,10 @@ class ApiExceptionHandler {
 
     @ExceptionHandler(LocationNotSetException::class)
     fun locationNotSet(e: LocationNotSetException) = problem(HttpStatus.CONFLICT, e.message)
+
+    @ExceptionHandler(UnsupportedImageTypeException::class)
+    fun unsupportedImageType(e: UnsupportedImageTypeException) =
+        problem(HttpStatus.UNSUPPORTED_MEDIA_TYPE, e.message)
 
     // Bean-validation failures on @RequestParam / @PathVariable arguments
     @ExceptionHandler(ConstraintViolationException::class)
