@@ -18,9 +18,17 @@ spring:
   session:
     redis:
       namespace: kindred:session
+    timeout: ${SESSION_TIMEOUT:7d}
 
 server:
   port: ${SERVER_PORT:8080}
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        same-site: lax
+        # set true behind HTTPS (any real deployment)
+        secure: ${SESSION_COOKIE_SECURE:false}
 
 management:
   endpoints:
@@ -36,3 +44,5 @@ springdoc:
 
 kindred:
   version: ${KINDRED_VERSION:dev}
+  # where verification-email links point (the web app routes them back to the API)
+  web-base-url: ${WEB_BASE_URL:http://localhost:3000}
