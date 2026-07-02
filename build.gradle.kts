@@ -35,6 +35,9 @@ dependencies {
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9")
     implementation(platform("software.amazon.awssdk:bom:2.29.52"))
     implementation("software.amazon.awssdk:s3")
+    implementation("org.jobrunr:jobrunr-spring-boot-3-starter:7.4.1")
+    implementation("com.sksamuel.scrimage:scrimage-core:4.1.3")
+    implementation("com.sksamuel.scrimage:scrimage-webp:4.1.3")
     runtimeOnly("com.mysql:mysql-connector-j")
     // only for the forked `generateOpenApiDocs` run (openapi profile) — not shipped in the jar
     developmentOnly("com.h2database:h2")

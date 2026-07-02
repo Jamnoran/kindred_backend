@@ -5,6 +5,9 @@ import com.kindred.api.auth.EmailNotVerifiedException
 import com.kindred.api.auth.InvalidVerificationTokenException
 import com.kindred.api.auth.UnderageSignupException
 import com.kindred.api.media.UnsupportedImageTypeException
+import com.kindred.api.photo.InvalidStorageKeyException
+import com.kindred.api.photo.PhotoLimitReachedException
+import com.kindred.api.photo.PhotoNotFoundException
 import com.kindred.api.profile.LocationNotSetException
 import com.kindred.api.profile.ProfileNotFoundException
 import com.kindred.api.profile.UnknownInterestException
@@ -41,6 +44,15 @@ class ApiExceptionHandler {
 
     @ExceptionHandler(LocationNotSetException::class)
     fun locationNotSet(e: LocationNotSetException) = problem(HttpStatus.CONFLICT, e.message)
+
+    @ExceptionHandler(InvalidStorageKeyException::class)
+    fun invalidStorageKey(e: InvalidStorageKeyException) = problem(HttpStatus.BAD_REQUEST, e.message)
+
+    @ExceptionHandler(PhotoLimitReachedException::class)
+    fun photoLimit(e: PhotoLimitReachedException) = problem(HttpStatus.CONFLICT, e.message)
+
+    @ExceptionHandler(PhotoNotFoundException::class)
+    fun photoNotFound(e: PhotoNotFoundException) = problem(HttpStatus.NOT_FOUND, e.message)
 
     @ExceptionHandler(UnsupportedImageTypeException::class)
     fun unsupportedImageType(e: UnsupportedImageTypeException) =

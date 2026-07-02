@@ -107,6 +107,57 @@
         }
       }
     },
+    "/api/v1/photos": {
+      "get": {
+        "tags": [
+          "photo-controller"
+        ],
+        "operationId": "list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PhotoResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "photo-controller"
+        ],
+        "operationId": "submit",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePhotoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/media/profile-photo-uploads": {
       "post": {
         "tags": [
@@ -349,6 +400,30 @@
           }
         }
       }
+    },
+    "/api/v1/photos/{id}": {
+      "delete": {
+        "tags": [
+          "photo-controller"
+        ],
+        "operationId": "delete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -480,6 +555,74 @@
         "required": [
           "lat",
           "lng"
+        ]
+      },
+      "CreatePhotoRequest": {
+        "type": "object",
+        "properties": {
+          "storageKey": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "storageKey"
+        ]
+      },
+      "PhotoResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ]
+          },
+          "isPrimary": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "blurhash": {
+            "type": "string"
+          },
+          "urls": {
+            "$ref": "#/components/schemas/PhotoUrls"
+          }
+        },
+        "required": [
+          "id",
+          "isPrimary",
+          "sortOrder",
+          "status"
+        ]
+      },
+      "PhotoUrls": {
+        "type": "object",
+        "properties": {
+          "thumb": {
+            "type": "string"
+          },
+          "card": {
+            "type": "string"
+          },
+          "full": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card",
+          "full",
+          "thumb"
         ]
       },
       "ProfilePhotoUploadRequest": {

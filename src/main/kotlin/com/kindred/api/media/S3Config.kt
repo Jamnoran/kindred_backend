@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
 import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.S3Configuration
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
 import java.net.URI
@@ -34,5 +35,16 @@ class S3Config {
         )
         // MinIO (and R2 custom domains) want path-style bucket addressing
         .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build())
+        .build()
+
+    /** Sync client used by the image-processing worker (get/put/delete objects). */
+    @Bean
+    fun s3Client(props: S3Properties): S3Client = S3Client.builder()
+        .endpointOverride(URI.create(props.endpoint))
+        .region(Region.of(props.region))
+        .credentialsProvider(
+            StaticCredentialsProvider.create(AwsBasicCredentials.create(props.accessKey, props.secretKey)),
+        )
+        .forcePathStyle(true)
         .build()
 }

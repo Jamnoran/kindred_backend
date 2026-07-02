@@ -26,9 +26,9 @@ Legend: `[ ]` todo · `[x]` done · `[~]` in progress / partially done
 
 - [x] Profile CRUD (bio, looking_for, interests, location POINT + spatial queries)
 - [x] Pre-signed upload → `quarantine/` prefix (AWS SDK v2 against R2/MinIO)
-- [ ] JobRunr worker: magic-byte validation, re-encode (scrimage), EXIF strip, responsive sizes, blurhash
-- [ ] NSFW + CSAM scanning hooks (stub providers; real ones before launch — see §9)
-- [ ] Serve profile photos via CDN with non-enumerable keys
+- [x] JobRunr worker: magic-byte validation, re-encode (scrimage), EXIF strip, responsive sizes, blurhash
+- [x] NSFW + CSAM scanning hooks (stub providers; real ones before launch — see §9)
+- [x] Serve profile photos via CDN with non-enumerable keys
 
 ## Phase 2 — Discovery + transparent matching
 
@@ -63,6 +63,22 @@ Legend: `[ ]` todo · `[x]` done · `[~]` in progress / partially done
 
 ## Work log
 
+- **2026-07-02** — Phase 1 image pipeline (`photo/` + `media/` additions): JobRunr
+  worker (in-process, MySQL-backed via the main DataSource; JobRequest pattern,
+  idempotent on retry). `POST /photos {storageKey}` records a pending row and
+  enqueues §6A processing: magic-byte validation (never extension) → scrimage
+  re-encode to JPEG (drops all metadata — EXIF strip proven by test with a spliced
+  EXIF segment) → bounded thumb/256, card/800, full/1600 sizes → blurhash (own
+  ~90-line encoder, no dep) → §9 scan hook (`ImageContentScanner`; stub allows all
+  and logs a launch-blocker warning — replace with PhotoDNA/Thorn/NSFW classifier)
+  → promote to `profiles/<random-hex>/{thumb,card,full}.jpg`, delete quarantine,
+  approve. `GET /photos` (CDN URLs from `kindred.media.public-base-url` only when
+  approved, blurhash for placeholders), `DELETE /photos/{id}` (re-primaries/re-sorts,
+  best-effort object deletion). Max 6 photos. Verified: pipeline unit-tested with
+  real images; HTTP smoke on H2 (submit/list/delete + all validation paths).
+  **Not verified end-to-end with MinIO/MySQL** — the compose smoke test below now
+  also covers upload → worker → approved URL. Self-host note: the MinIO bucket
+  needs creating + a public-read policy on `profiles/` (Phase 5 packaging).
 - **2026-07-02** — Phase 1 pre-signed uploads (`media/` package): AWS SDK v2
   `S3Presigner` (path-style for MinIO, endpoint/creds from `kindred.s3.*` /
   `S3_*` env, already wired in docker-compose). `POST /media/profile-photo-uploads`
