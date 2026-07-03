@@ -19,7 +19,10 @@ import org.springframework.web.bind.annotation.RestController
 @Validated
 @RestController
 @RequestMapping("/api/v1/conversations")
-class ChatController(private val chatService: ChatService) {
+class ChatController(
+    private val chatService: ChatService,
+    private val chatMediaService: ChatMediaService,
+) {
 
     @GetMapping
     fun conversations(@AuthenticationPrincipal principal: KindredUserDetails): List<ConversationResponse> =
@@ -39,7 +42,25 @@ class ChatController(private val chatService: ChatService) {
         @AuthenticationPrincipal principal: KindredUserDetails,
         @PathVariable id: Long,
         @Valid @RequestBody req: SendMessageRequest,
-    ): MessageResponse = chatService.send(principal.id, id, req.body)
+    ): MessageResponse = chatService.send(principal.id, id, req.body, req.mediaStorageKey)
+
+    /** PUT the image bytes to `uploadUrl`, then send a message with the returned storageKey. */
+    @PostMapping("/{id}/media-uploads")
+    @ResponseStatus(HttpStatus.CREATED)
+    fun createMediaUpload(
+        @AuthenticationPrincipal principal: KindredUserDetails,
+        @PathVariable id: Long,
+        @Valid @RequestBody req: ChatMediaUploadRequest,
+    ): ChatMediaUploadResponse =
+        ChatMediaUploadResponse.from(chatMediaService.presignUpload(principal.id, id, req.contentType))
+
+    /** Short-lived signed URLs for a chat image (§6B) — authorized on every fetch. */
+    @GetMapping("/{id}/media/{mediaId}")
+    fun mediaUrls(
+        @AuthenticationPrincipal principal: KindredUserDetails,
+        @PathVariable id: Long,
+        @PathVariable mediaId: Long,
+    ): ChatMediaUrlsResponse = chatMediaService.signedUrls(principal.id, id, mediaId)
 
     /** Read receipt: marks the other participant's messages as read. */
     @PostMapping("/{id}/read")

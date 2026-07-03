@@ -17,11 +17,16 @@ import org.springframework.messaging.Message as MessagingMessage
 
 /** Event envelope broadcast on /topic/conversations/{id}. */
 data class ChatEvent(
-    val type: String, // message | read | typing
+    val type: String, // message | read | typing | media | presence
     val conversationId: Long,
     val message: MessageResponse? = null,
     val readerId: Long? = null,
     val typingUserId: Long? = null,
+    /** media events: the processed (or rejected) image attached to an earlier message */
+    val media: ChatMediaSummary? = null,
+    /** presence events */
+    val presenceUserId: Long? = null,
+    val online: Boolean? = null,
 )
 
 /**

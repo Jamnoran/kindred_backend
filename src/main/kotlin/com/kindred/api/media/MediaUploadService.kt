@@ -39,7 +39,17 @@ class MediaUploadService(
 
     private val random = SecureRandom()
 
-    fun presignProfilePhotoUpload(userId: Long, contentType: String): PresignedUpload {
+    fun presignProfilePhotoUpload(userId: Long, contentType: String): PresignedUpload =
+        presignQuarantineUpload(contentType, mapOf("uploader-user-id" to userId.toString()))
+
+    /** Chat images (§6B) start in the same quarantine; they promote to `chat-media/`, never `profiles/`. */
+    fun presignChatImageUpload(userId: Long, conversationId: Long, contentType: String): PresignedUpload =
+        presignQuarantineUpload(
+            contentType,
+            mapOf("uploader-user-id" to userId.toString(), "conversation-id" to conversationId.toString()),
+        )
+
+    private fun presignQuarantineUpload(contentType: String, metadata: Map<String, String>): PresignedUpload {
         val normalized = contentType.trim().lowercase()
         if (normalized !in ALLOWED_IMAGE_TYPES) {
             throw UnsupportedImageTypeException(contentType)
@@ -51,7 +61,7 @@ class MediaUploadService(
             .key(key)
             .contentType(normalized)
             // recorded so the worker can attribute the upload without trusting the client
-            .metadata(mapOf("uploader-user-id" to userId.toString()))
+            .metadata(metadata)
             .build()
         val presigned = presigner.presignPutObject(
             PutObjectPresignRequest.builder()

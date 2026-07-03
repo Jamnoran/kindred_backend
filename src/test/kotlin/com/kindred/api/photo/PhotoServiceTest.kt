@@ -1,5 +1,6 @@
 package com.kindred.api.photo
 
+import com.kindred.api.chat.ChatMediaRepository
 import com.kindred.api.profile.ProfileNotFoundException
 import com.kindred.api.profile.ProfileRepository
 import org.jobrunr.scheduling.JobRequestScheduler
@@ -18,9 +19,10 @@ class PhotoServiceTest {
 
     private val photos: PhotoRepository = mock()
     private val profiles: ProfileRepository = mock()
+    private val chatMedia: ChatMediaRepository = mock()
     private val jobs: JobRequestScheduler = mock()
     private val processing: PhotoProcessingService = mock()
-    private val service = PhotoService(photos, profiles, jobs, processing)
+    private val service = PhotoService(photos, profiles, chatMedia, jobs, processing)
 
     private val validKey = "quarantine/" + "ab".repeat(16)
 
