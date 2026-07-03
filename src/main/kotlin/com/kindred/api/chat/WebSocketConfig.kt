@@ -27,8 +27,8 @@ data class ChatEvent(
 /**
  * STOMP over WebSocket (§8). The handshake at /ws is authenticated by the session
  * cookie; subscriptions to conversation topics are authorized by match membership.
- * Single-instance simple broker for now — the Redis relay for multi-instance
- * fan-out is a pending FEATURES task.
+ * The broker here is per-instance and in-memory; ChatEventRelay fans events out
+ * across instances over Redis pub/sub before they reach it.
  */
 @Configuration
 @EnableWebSocketMessageBroker

@@ -41,7 +41,7 @@ Legend: `[ ]` todo · `[x]` done · `[~]` in progress / partially done
 
 ## Phase 3 — Chat
 
-- [~] Spring WebSocket (STOMP) + Redis relay (STOMP live: /ws endpoint, subscribe authz by membership, message/read/typing events on /topic/conversations/{id}; Redis relay for multi-instance still pending)
+- [x] Spring WebSocket (STOMP) + Redis relay (STOMP live: /ws endpoint, subscribe authz by membership, message/read/typing events on /topic/conversations/{id}; Redis pub/sub relay fans events out across instances)
 - [x] Conversations + messages (authz by match membership on every read/send)
 - [ ] Private chat-image pipeline + short-lived signed URLs (5-min expiry)
 - [~] Presence / typing / read receipts (typing + read receipts done; presence pending)
@@ -63,6 +63,22 @@ Legend: `[ ]` todo · `[x]` done · `[~]` in progress / partially done
 
 ## Work log
 
+- **2026-07-03** — Phase 3 Redis relay (`chat/ChatEventRelay.kt`): chat events no
+  longer go straight to the local STOMP broker — `ChatService.broadcast` publishes
+  the `ChatEvent` as JSON on one Redis pub/sub channel (`kindred:chat:events`), and
+  a `RedisMessageListenerContainer` on every API instance (publisher included)
+  rebroadcasts received events to its own in-memory broker. So a WebSocket client
+  can sit on any instance and still see messages/read-receipts/typing produced on
+  another. One channel for everything: per-conversation filtering already happens
+  at the STOMP subscription. Malformed relay payloads are logged + dropped, never
+  thrown. The relay is `@Profile("!openapi")` (the spec-export boot excludes Redis);
+  `broadcast` no-ops when it's absent. Verified: relay unit tests (JSON round-trip,
+  malformed drop) **plus a real-Redis integration test** — two relay instances with
+  separate listener containers against a live Redis, publish on one, assert delivery
+  on both; it self-skips (JUnit assumption) when localhost:6379 is down, so plain CI
+  stays green. Still not client-driven end-to-end over an actual WebSocket — that
+  smoke test remains open alongside the compose one. Next in Phase 3: private
+  chat-image pipeline, then presence.
 - **2026-07-02** — Phase 2 complete + Phase 3 REST chat (`discovery/` + `chat/`).
   Discovery: SQL hard filters (age via `TIMESTAMPDIFF`, viewer's distance limit via
   `ST_Distance_Sphere`, no repeats, blocks pre-severed both ways, deleted/unverified

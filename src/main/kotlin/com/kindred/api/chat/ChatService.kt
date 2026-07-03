@@ -9,7 +9,6 @@ import com.kindred.api.profile.ProfileRepository
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.domain.PageRequest
-import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
@@ -22,8 +21,8 @@ class ChatService(
     private val profiles: ProfileRepository,
     private val photos: PhotoRepository,
     private val clock: Clock,
-    // lazy to break the cycle with WebSocketConfig; absent in slice tests
-    private val messaging: ObjectProvider<SimpMessagingTemplate>,
+    // absent when Redis is (openapi spec-export boot, slice tests) — broadcast no-ops
+    private val relay: ObjectProvider<ChatEventRelay>,
     @param:Value("\${kindred.media.public-base-url}") private val publicBaseUrl: String,
 ) {
 
@@ -90,8 +89,9 @@ class ChatService(
         return changed
     }
 
+    /** Fans out via Redis so subscribers on every API instance see the event. */
     fun broadcast(event: ChatEvent) {
-        messaging.ifAvailable?.convertAndSend("/topic/conversations/${event.conversationId}", event)
+        relay.ifAvailable?.publish(event)
     }
 
     /**

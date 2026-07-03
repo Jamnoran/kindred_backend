@@ -7,6 +7,7 @@ import com.kindred.api.profile.ProfileRepository
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.kotlin.any
+import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
@@ -25,11 +26,14 @@ class ChatServiceTest {
     private val matches: MatchRepository = mock()
     private val profiles: ProfileRepository = mock()
     private val photos: PhotoRepository = mock()
-    private val messaging: org.springframework.beans.factory.ObjectProvider<org.springframework.messaging.simp.SimpMessagingTemplate> = mock()
+    private val relayInstance: ChatEventRelay = mock()
+    private val relay: org.springframework.beans.factory.ObjectProvider<ChatEventRelay> = mock {
+        on { ifAvailable } doReturn relayInstance
+    }
     private val now = Instant.parse("2026-07-02T12:00:00Z")
     private val service = ChatService(
         conversations, messages, matches, profiles, photos,
-        Clock.fixed(now, ZoneOffset.UTC), messaging, "http://cdn.test",
+        Clock.fixed(now, ZoneOffset.UTC), relay, "http://cdn.test",
     )
 
     private fun stubConversation(convoId: Long = 7L, matchId: Long = 3L, userA: Long = 1L, userB: Long = 2L) {
@@ -47,6 +51,7 @@ class ChatServiceTest {
         assertEquals("hello there", sent.body)
         assertEquals(1L, sent.senderId)
         assertEquals(now, sent.createdAt)
+        verify(relayInstance).publish(ChatEvent(type = "message", conversationId = 7L, message = sent))
     }
 
     @Test
