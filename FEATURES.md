@@ -43,8 +43,8 @@ Legend: `[ ]` todo · `[x]` done · `[~]` in progress / partially done
 
 - [x] Spring WebSocket (STOMP) + Redis relay (STOMP live: /ws endpoint, subscribe authz by membership, message/read/typing events on /topic/conversations/{id}; Redis pub/sub relay fans events out across instances)
 - [x] Conversations + messages (authz by match membership on every read/send)
-- [ ] Private chat-image pipeline + short-lived signed URLs (5-min expiry)
-- [~] Presence / typing / read receipts (typing + read receipts done; presence pending)
+- [x] Private chat-image pipeline + short-lived signed URLs (5-min expiry)
+- [x] Presence / typing / read receipts
 
 ## Phase 4 — Safety & legal
 
@@ -63,6 +63,45 @@ Legend: `[ ]` todo · `[x]` done · `[~]` in progress / partially done
 
 ## Work log
 
+- **2026-07-03** — Per-surface NSFW policy (§9): the scanner hook now returns a
+  verdict (`CLEAN | NSFW | DISALLOWED`) instead of a boolean. Profile photos
+  reject anything non-clean (unchanged behavior); chat **approves NSFW flagged** —
+  V5 adds `media.is_nsfw`, exposed as `nsfw` on `ChatMediaSummary` everywhere a
+  message travels (REST + `media` events). The client contract (documented as a
+  hard requirement in CLIENT_INTEGRATION.md §6): `nsfw: true` → render only the
+  blurhash, don't fetch signed URLs until the viewer explicitly taps. DISALLOWED
+  (CSAM) is still rejected + deleted on every surface, and the stub scanner still
+  returns CLEAN for everything, so nothing is flagged until a real classifier
+  lands — the launch-blocker warning stands. Verified: NSFW-flagged-approved in
+  chat, NSFW-rejected on profiles, DISALLOWED rejected in both (unit tests).
+- **2026-07-03** — Phase 3 complete: chat images + presence. Chat images (§6B,
+  `chat/ChatMedia*`): `POST /conversations/{id}/media-uploads` presigns a PUT into
+  the same `quarantine/` prefix (membership-checked, conversation id recorded as
+  object metadata); `POST .../messages` now takes `{body?, mediaStorageKey?}` (at
+  least one; blank body counts as absent) and records a pending `media` row +
+  message in one transaction, enqueuing a JobRunr job that reuses the §6A pipeline
+  (magic bytes → re-encode/EXIF strip → sizes → blurhash → scan hook) but promotes
+  to the **private `chat-media/` prefix** — never a public URL. Outcome is pushed
+  as a `media` ChatEvent so both clients swap the blurhash placeholder live.
+  Fetching bytes: `GET .../media/{mediaId}` mints **5-min presigned GET URLs**
+  per size, membership-authorized on every call; pending → 409, rejected/foreign →
+  404 (same as nonexistent). Storage keys are single-use across both photos and
+  media tables (cross-checked both ways). V4 adds `media.blurhash`. Presence
+  (`chat/Presence*`): Redis ZSET per user of live WS sessions scored by last-seen;
+  connect/disconnect listeners + a 2-min scheduled sweep of this instance's
+  SimpUserRegistry keep scores fresh, so a crashed instance's sessions age past
+  the 5-min window and read offline with no cleanup job. Connect also touches
+  `profiles.last_active_at` (feeds discovery's activity score). `otherUser.online`
+  in `GET /conversations`; offline↔online transitions broadcast `presence`
+  ChatEvents to all the user's conversation topics via the existing relay. Both
+  ChatEvent additions are backward-compatible (new nullable fields). Verified:
+  unit tests throughout (processing happy/reject/idempotent paths with real image
+  bytes, signed-URL shape with the real presigner, tracker transitions) **plus
+  real-Redis presence tests** (multi-session transitions, crash aging via a
+  movable clock) — run against a live local Redis here, self-skipping when Redis
+  is down. OpenAPI spec regenerated; CLIENT_INTEGRATION.md §6–8 updated. Still
+  open: the full compose smoke test (MySQL spatial + MinIO end-to-end) and rate
+  limiting on sends/likes (Phase 4). Next: Phase 4 — report + block.
 - **2026-07-03** — Phase 3 Redis relay (`chat/ChatEventRelay.kt`): chat events no
   longer go straight to the local STOMP broker — `ChatService.broadcast` publishes
   the `ChatEvent` as JSON on one Redis pub/sub channel (`kindred:chat:events`), and

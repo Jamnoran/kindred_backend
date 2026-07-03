@@ -33,6 +33,7 @@ class ChatEventRelayTest {
                 id = 100L,
                 senderId = 1L,
                 body = "hello",
+                media = null,
                 createdAt = Instant.parse("2026-07-02T12:00:00Z"),
                 readAt = null,
             ),

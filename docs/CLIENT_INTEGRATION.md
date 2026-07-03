@@ -122,18 +122,67 @@ pending photos. `DELETE /photos/{id}` removes one (re-sorts, re-picks primary).
 ## 6. Chat — REST
 
 - `GET /conversations` → newest-activity-first list:
-  `{id, matchId, matchedAt, otherUser: {userId, displayName, photo}, lastMessage, unreadCount}`.
+  `{id, matchId, matchedAt, otherUser: {userId, displayName, photo, online}, lastMessage, unreadCount}`.
+  `otherUser.online` is live presence (see §7 for the realtime updates).
 - `GET /conversations/{id}/messages?limit=50[&before={messageId}]` — **newest
   first, keyset paginated**: first call without `before`, then pass the smallest
   `id` you have to load older history. `limit` 1–100.
-- `POST /conversations/{id}/messages` `{body}` → 201 with the created message.
-  Body: 1–2000 chars, non-blank (blank → 400). The sender's own send also arrives
+- `POST /conversations/{id}/messages` `{body?, mediaStorageKey?}` → 201 with the
+  created message. At least one of the two is required (neither → 400). Body:
+  ≤2000 chars; blank counts as absent. The sender's own send also arrives
   as a WebSocket event — de-duplicate by message `id`.
 - `POST /conversations/{id}/read` → `{markedRead: n}`. Call it when the user
   actually views the conversation; it marks all of the *other* participant's
   messages as read.
 - Any conversation you're not a member of is a **404** (indistinguishable from
   nonexistent — by design). Treat 404 here as "conversation gone".
+
+### Chat images (private — signed URLs only)
+
+Same three-step shape as profile photos, but scoped to a conversation and never
+served from a public URL:
+
+1. `POST /conversations/{id}/media-uploads` `{contentType}` (jpeg/png/webp) →
+   `{uploadUrl, storageKey, expiresAt}`. `PUT` the raw bytes to `uploadUrl` with
+   that same `Content-Type` within 10 minutes.
+2. `POST /conversations/{id}/messages` `{mediaStorageKey: storageKey}` (with or
+   without a `body`). The message's `media` field starts as
+   `{id, status: "pending", nsfw: false, blurhash: null}` — render a placeholder.
+   When the server has validated/re-encoded/scanned the image you get a `media`
+   WebSocket event (below) with `status: "approved"` (+ `nsfw` + blurhash) or
+   `"rejected"`; a rejected image should be shown as removed. Each `storageKey`
+   is single-use.
+3. To display an approved image: `GET /conversations/{id}/media/{mediaId}` →
+   `{mediaId, urls: {thumb, card, full}, expiresAt}`. **These are signed URLs that
+   expire after 5 minutes** — fetch them when the image scrolls into view, don't
+   persist them, and refetch after `expiresAt` (an expired URL returns 403 from
+   storage). While still processing the endpoint returns **409**; rejected or
+   foreign media is a **404**.
+- Message objects everywhere (`lastMessage`, the messages page, `message` events)
+  carry `media: {id, status, nsfw, blurhash} | null` — the bytes always go through
+  the signed-URL endpoint above, per participant, authorized on every fetch.
+
+#### NSFW chat images — blur until tapped (client REQUIREMENT)
+
+Adult-but-legal images are **allowed in chat** but come back with `nsfw: true`
+(per-surface policy — the same image would be rejected as a profile photo). The
+client is the enforcement point for the reveal, so this is a requirement, not a
+suggestion:
+
+- When `media.nsfw` is true, render **only the blurhash placeholder** with a
+  "tap to reveal" affordance. Do **not** call the signed-URL endpoint — and
+  therefore never load the actual bytes — until the viewer explicitly taps.
+  (The blurhash is a 32×32 gradient, so nothing recognizable leaks.)
+- The reveal is per-viewer and should not be sticky across messages: each
+  `nsfw` image gets its own tap. Remembering the choice per *conversation* is an
+  acceptable UX refinement; auto-revealing globally is not.
+- Apply the same rule to the conversation list: if `lastMessage.media.nsfw` is
+  true, show a generic "Photo" label/placeholder there, never a thumbnail.
+- `nsfw` can be true the moment the `media` event arrives — check it before
+  swapping the placeholder for the real image on that event, too.
+- Note: until a real classifier replaces the backend's stub scanner, `nsfw` is
+  always false in practice. Build the UI against the field now so it lights up
+  when the real provider lands (backend `ImageContentScanner` — §9).
 
 ## 7. Chat — realtime (STOMP over WebSocket)
 
@@ -148,13 +197,22 @@ This part is not in the OpenAPI spec. The endpoint is **`/ws`** (so
   `GET /conversations`. Subscribing to someone else's conversation is rejected:
   the server sends a STOMP ERROR frame and **closes the connection**, so never
   guess ids.
-- **Events** on that topic (one JSON `ChatEvent` per frame; unused fields are null):
+- **Events** on that topic (one JSON `ChatEvent` per frame; fields a type doesn't
+  use are null on the wire — omitted below for brevity):
 
 ```jsonc
-{ "type": "message", "conversationId": 7, "message": { "id": 101, "senderId": 2, "body": "hey", "createdAt": "2026-07-03T07:00:00Z", "readAt": null }, "readerId": null, "typingUserId": null }
-{ "type": "read",    "conversationId": 7, "message": null, "readerId": 2, "typingUserId": null }   // user 2 read your messages
-{ "type": "typing",  "conversationId": 7, "message": null, "readerId": null, "typingUserId": 2 }   // user 2 is typing
+{ "type": "message",  "conversationId": 7, "message": { "id": 101, "senderId": 2, "body": "hey", "media": null, "createdAt": "2026-07-03T07:00:00Z", "readAt": null } }
+{ "type": "read",     "conversationId": 7, "readerId": 2 }                                        // user 2 read your messages
+{ "type": "typing",   "conversationId": 7, "typingUserId": 2 }                                    // user 2 is typing
+{ "type": "media",    "conversationId": 7, "media": { "id": 30, "status": "approved", "nsfw": false, "blurhash": "LKO2…" } } // image 30 finished processing (or "rejected"); nsfw:true → blur until tapped (§6)
+{ "type": "presence", "conversationId": 7, "presenceUserId": 2, "online": true }                  // user 2 came online (or false: went offline)
 ```
+
+- **Presence:** `online` in `GET /conversations` is the initial state; `presence`
+  events keep it live while you're subscribed. A user is "online" while they have
+  a WebSocket connected (sessions on a dead instance age out within ~5 minutes,
+  so a dropped connection may read online briefly). Presence is free and honest —
+  there is no "appear offline" tier.
 
 - **Typing:** publish an empty frame to `/app/conversations/{id}/typing` while the
   user types. Throttle to ~1 frame per 3 s, and expire the "is typing…" indicator
@@ -195,10 +253,10 @@ history. Sending messages goes through REST (§6), not the socket.
 
 ## 8. Not implemented yet (don't build against these)
 
-Presence/online status, chat images, report/block, rate limiting, and GDPR
-export are pending backend phases. The `type` field on `ChatEvent` is open-ended
-— **ignore unknown event types** instead of erroring, so presence can ship
-without breaking older clients.
+Report/block, rate limiting, and GDPR export are pending backend phases
+(Phase 4+). The `type` field on `ChatEvent` is open-ended — **ignore unknown
+event types** instead of erroring, so new event kinds can ship without breaking
+older clients.
 
 ## 9. Errors
 

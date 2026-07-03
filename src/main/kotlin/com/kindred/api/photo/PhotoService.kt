@@ -1,5 +1,6 @@
 package com.kindred.api.photo
 
+import com.kindred.api.chat.ChatMediaRepository
 import com.kindred.api.profile.ProfileNotFoundException
 import com.kindred.api.profile.ProfileRepository
 import org.jobrunr.scheduling.JobRequestScheduler
@@ -10,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional
 class PhotoService(
     private val photos: PhotoRepository,
     private val profiles: ProfileRepository,
+    private val chatMedia: ChatMediaRepository,
     private val jobs: JobRequestScheduler,
     private val photoProcessingService: PhotoProcessingService,
 ) {
@@ -31,7 +33,7 @@ class PhotoService(
         if (!QUARANTINE_KEY.matches(storageKey)) {
             throw InvalidStorageKeyException("storageKey must be one returned by the upload endpoint")
         }
-        if (photos.existsByStorageKey(storageKey)) {
+        if (photos.existsByStorageKey(storageKey) || chatMedia.existsByStorageKey(storageKey)) {
             throw InvalidStorageKeyException("storageKey was already submitted")
         }
         val count = photos.countByProfileUserId(userId)

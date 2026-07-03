@@ -4,6 +4,7 @@ import com.kindred.api.media.ImageContentScanner
 import com.kindred.api.media.MediaStorage
 import com.kindred.api.media.ProfilePhotoProcessor
 import com.kindred.api.media.ScanResult
+import com.kindred.api.media.ScanVerdict
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
@@ -50,7 +51,7 @@ class PhotoProcessingServiceTest {
         val photo = pendingPhoto()
         whenever(photos.findById(5L)).thenReturn(Optional.of(photo))
         whenever(storage.get(quarantineKey)).thenReturn(jpeg())
-        whenever(scanner.scan(any())).thenReturn(ScanResult(allowed = true))
+        whenever(scanner.scan(any())).thenReturn(ScanResult(ScanVerdict.CLEAN))
         whenever(photos.save(any())).thenAnswer { it.arguments[0] }
 
         service.process(5L)
@@ -87,13 +88,26 @@ class PhotoProcessingServiceTest {
         val photo = pendingPhoto()
         whenever(photos.findById(5L)).thenReturn(Optional.of(photo))
         whenever(storage.get(quarantineKey)).thenReturn(jpeg())
-        whenever(scanner.scan(any())).thenReturn(ScanResult(allowed = false, reason = "nsfw"))
+        whenever(scanner.scan(any())).thenReturn(ScanResult(ScanVerdict.DISALLOWED, reason = "csam-hit"))
 
         service.process(5L)
 
         assertEquals(ModerationStatus.rejected, photo.moderationStatus)
         verify(storage, never()).put(any(), any(), any())
         verify(storage).delete(quarantineKey)
+    }
+
+    @Test
+    fun `NSFW is rejected on the profile surface - chat-only content`() {
+        val photo = pendingPhoto()
+        whenever(photos.findById(5L)).thenReturn(Optional.of(photo))
+        whenever(storage.get(quarantineKey)).thenReturn(jpeg())
+        whenever(scanner.scan(any())).thenReturn(ScanResult(ScanVerdict.NSFW))
+
+        service.process(5L)
+
+        assertEquals(ModerationStatus.rejected, photo.moderationStatus)
+        verify(storage, never()).put(any(), any(), any())
     }
 
     @Test

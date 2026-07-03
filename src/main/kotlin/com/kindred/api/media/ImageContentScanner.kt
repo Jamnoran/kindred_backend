@@ -4,7 +4,17 @@ import jakarta.annotation.PostConstruct
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 
-data class ScanResult(val allowed: Boolean, val reason: String? = null)
+/**
+ * What surfaces do with each verdict is *their* policy (ARCHITECTURE.md §9):
+ * - [CLEAN] — serve normally everywhere.
+ * - [NSFW] — adult but legal. Profile photos reject it; chat approves it flagged,
+ *   and clients keep it blurred until the viewer opts in.
+ * - [DISALLOWED] — never served, deleted, on any surface. CSAM always lands here
+ *   (and a real provider must also handle the mandated reporting, e.g. NCMEC).
+ */
+enum class ScanVerdict { CLEAN, NSFW, DISALLOWED }
+
+data class ScanResult(val verdict: ScanVerdict, val reason: String? = null)
 
 /**
  * NSFW + CSAM scanning hook (ARCHITECTURE.md §9). Every processed image passes
@@ -29,5 +39,5 @@ class StubImageContentScanner : ImageContentScanner {
         )
     }
 
-    override fun scan(imageBytes: ByteArray): ScanResult = ScanResult(allowed = true)
+    override fun scan(imageBytes: ByteArray): ScanResult = ScanResult(ScanVerdict.CLEAN)
 }

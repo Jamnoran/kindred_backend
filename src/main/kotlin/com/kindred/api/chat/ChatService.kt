@@ -2,10 +2,12 @@ package com.kindred.api.chat
 
 import com.kindred.api.discovery.MatchRepository
 import com.kindred.api.discovery.PhotoSummary
+import com.kindred.api.photo.InvalidStorageKeyException
 import com.kindred.api.photo.ModerationStatus
 import com.kindred.api.photo.Photo
 import com.kindred.api.photo.PhotoRepository
 import com.kindred.api.profile.ProfileRepository
+import org.jobrunr.scheduling.JobRequestScheduler
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.domain.PageRequest
@@ -20,11 +22,19 @@ class ChatService(
     private val matches: MatchRepository,
     private val profiles: ProfileRepository,
     private val photos: PhotoRepository,
+    private val chatMedia: ChatMediaRepository,
+    private val jobs: JobRequestScheduler,
     private val clock: Clock,
     // absent when Redis is (openapi spec-export boot, slice tests) — broadcast no-ops
     private val relay: ObjectProvider<ChatEventRelay>,
+    // absent for the same reason — everyone just reads as offline
+    private val presence: ObjectProvider<PresenceService>,
     @param:Value("\${kindred.media.public-base-url}") private val publicBaseUrl: String,
 ) {
+
+    companion object {
+        private val QUARANTINE_KEY = Regex("quarantine/[0-9a-f]{32}")
+    }
 
     @Transactional(readOnly = true)
     fun listConversations(userId: Long): List<ConversationResponse> {
@@ -35,6 +45,7 @@ class ChatService(
         val profilesById = profiles.findAllById(otherIds).associateBy { it.userId }
         val primaryPhotos = photos.findAllByProfileUserIdInAndModerationStatusAndIsPrimaryTrue(otherIds, ModerationStatus.approved)
             .associateBy(Photo::profileUserId)
+        val onlineIds = presence.ifAvailable?.onlineOf(otherIds) ?: emptySet()
 
         return convos.mapNotNull { convo ->
             val match = myMatches[convo.matchId] ?: return@mapNotNull null
@@ -49,8 +60,9 @@ class ChatService(
                     userId = otherId,
                     displayName = profile.displayName,
                     photo = PhotoSummary.from(primaryPhotos[otherId], publicBaseUrl),
+                    online = otherId in onlineIds,
                 ),
-                lastMessage = messages.findFirstByConversationIdOrderByIdDesc(convoId)?.let(MessageResponse::from),
+                lastMessage = messages.findFirstByConversationIdOrderByIdDesc(convoId)?.let { toResponse(it) },
                 unreadCount = messages.countByConversationIdAndSenderIdNotAndReadAtIsNull(convoId, userId),
             )
         }.sortedByDescending { it.lastMessage?.createdAt ?: it.matchedAt }
@@ -59,23 +71,52 @@ class ChatService(
     @Transactional(readOnly = true)
     fun messages(userId: Long, conversationId: Long, before: Long?, limit: Int): List<MessageResponse> {
         requireMembership(userId, conversationId)
-        return messages.page(conversationId, before, PageRequest.of(0, limit)).map(MessageResponse::from)
+        val page = messages.page(conversationId, before, PageRequest.of(0, limit))
+        val mediaById = chatMedia.findAllById(page.mapNotNull(Message::mediaId)).associateBy { requireNotNull(it.id) }
+        return page.map { MessageResponse.from(it, it.mediaId?.let(mediaById::get)) }
     }
 
     @Transactional
-    fun send(userId: Long, conversationId: Long, body: String): MessageResponse {
+    fun send(userId: Long, conversationId: Long, body: String?, mediaStorageKey: String? = null): MessageResponse {
         requireMembership(userId, conversationId)
+        val trimmed = body?.trim().takeUnless { it.isNullOrEmpty() }
+        if (trimmed == null && mediaStorageKey == null) throw EmptyMessageException()
+
+        val media = mediaStorageKey?.let { submitMedia(userId, conversationId, it) }
         val message = messages.save(
             Message(
                 conversationId = conversationId,
                 senderId = userId,
-                body = body.trim(),
+                body = trimmed,
+                mediaId = media?.id,
                 createdAt = clock.instant(),
             ),
         )
-        val response = MessageResponse.from(message)
+        media?.let { jobs.enqueue(ProcessChatMediaRequest(requireNotNull(it.id))) }
+        val response = MessageResponse.from(message, media)
         broadcast(ChatEvent(type = "message", conversationId = conversationId, message = response))
         return response
+    }
+
+    /**
+     * Records the §6B media row (pending — no bytes are served until the worker
+     * validates, scans, and promotes it out of quarantine).
+     */
+    private fun submitMedia(userId: Long, conversationId: Long, storageKey: String): ChatMedia {
+        if (!QUARANTINE_KEY.matches(storageKey)) {
+            throw InvalidStorageKeyException("mediaStorageKey must be one returned by the media-uploads endpoint")
+        }
+        if (chatMedia.existsByStorageKey(storageKey) || photos.existsByStorageKey(storageKey)) {
+            throw InvalidStorageKeyException("mediaStorageKey was already submitted")
+        }
+        return chatMedia.save(
+            ChatMedia(
+                storageKey = storageKey,
+                ownerUserId = userId,
+                conversationId = conversationId,
+                createdAt = clock.instant(),
+            ),
+        )
     }
 
     /** Marks everything from the other participant as read; returns how many changed. */
@@ -104,4 +145,7 @@ class ChatService(
         val match = matches.findById(convo.matchId).orElseThrow { ConversationNotFoundException() }
         if (!match.involves(userId)) throw ConversationNotFoundException()
     }
+
+    private fun toResponse(message: Message): MessageResponse =
+        MessageResponse.from(message, message.mediaId?.let { chatMedia.findById(it).orElse(null) })
 }

@@ -395,6 +395,47 @@
         }
       }
     },
+    "/api/v1/conversations/{id}/media-uploads": {
+      "post": {
+        "tags": [
+          "chat-controller"
+        ],
+        "operationId": "createMediaUpload",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatMediaUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatMediaUploadResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/verify-email": {
       "post": {
         "tags": [
@@ -664,6 +705,46 @@
                   "items": {
                     "$ref": "#/components/schemas/ConversationResponse"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conversations/{id}/media/{mediaId}": {
+      "get": {
+        "tags": [
+          "chat-controller"
+        ],
+        "operationId": "mediaUrls",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "mediaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatMediaUrlsResponse"
                 }
               }
             }
@@ -1112,10 +1193,40 @@
             "type": "string",
             "maxLength": 2000,
             "minLength": 0
+          },
+          "mediaStorageKey": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          }
+        }
+      },
+      "ChatMediaSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ]
+          },
+          "nsfw": {
+            "type": "boolean"
+          },
+          "blurhash": {
+            "type": "string"
           }
         },
         "required": [
-          "body"
+          "id",
+          "nsfw",
+          "status"
         ]
       },
       "MessageResponse": {
@@ -1132,6 +1243,9 @@
           "body": {
             "type": "string"
           },
+          "media": {
+            "$ref": "#/components/schemas/ChatMediaSummary"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -1145,6 +1259,38 @@
           "createdAt",
           "id",
           "senderId"
+        ]
+      },
+      "ChatMediaUploadRequest": {
+        "type": "object",
+        "properties": {
+          "contentType": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "contentType"
+        ]
+      },
+      "ChatMediaUploadResponse": {
+        "type": "object",
+        "properties": {
+          "uploadUrl": {
+            "type": "string"
+          },
+          "storageKey": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "expiresAt",
+          "storageKey",
+          "uploadUrl"
         ]
       },
       "VerifyEmailRequest": {
@@ -1438,10 +1584,14 @@
           },
           "photo": {
             "$ref": "#/components/schemas/PhotoSummary"
+          },
+          "online": {
+            "type": "boolean"
           }
         },
         "required": [
           "displayName",
+          "online",
           "userId"
         ]
       },
@@ -1477,6 +1627,27 @@
           "matchedAt",
           "otherUser",
           "unreadCount"
+        ]
+      },
+      "ChatMediaUrlsResponse": {
+        "type": "object",
+        "properties": {
+          "mediaId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "urls": {
+            "$ref": "#/components/schemas/PhotoUrls"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "expiresAt",
+          "mediaId",
+          "urls"
         ]
       }
     }
