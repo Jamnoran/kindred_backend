@@ -38,6 +38,10 @@ class ChatMedia(
     @Column(name = "moderation_status", nullable = false)
     var moderationStatus: ModerationStatus = ModerationStatus.pending,
 
+    /** Adult-but-legal (§9): approved for chat, but clients blur it until the viewer opts in. */
+    @Column(name = "is_nsfw", nullable = false)
+    var isNsfw: Boolean = false,
+
     @Column(length = 64)
     var blurhash: String? = null,
 

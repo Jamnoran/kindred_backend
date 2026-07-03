@@ -1216,12 +1216,16 @@
               "rejected"
             ]
           },
+          "nsfw": {
+            "type": "boolean"
+          },
           "blurhash": {
             "type": "string"
           }
         },
         "required": [
           "id",
+          "nsfw",
           "status"
         ]
       },

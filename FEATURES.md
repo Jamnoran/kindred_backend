@@ -63,6 +63,17 @@ Legend: `[ ]` todo · `[x]` done · `[~]` in progress / partially done
 
 ## Work log
 
+- **2026-07-03** — Per-surface NSFW policy (§9): the scanner hook now returns a
+  verdict (`CLEAN | NSFW | DISALLOWED`) instead of a boolean. Profile photos
+  reject anything non-clean (unchanged behavior); chat **approves NSFW flagged** —
+  V5 adds `media.is_nsfw`, exposed as `nsfw` on `ChatMediaSummary` everywhere a
+  message travels (REST + `media` events). The client contract (documented as a
+  hard requirement in CLIENT_INTEGRATION.md §6): `nsfw: true` → render only the
+  blurhash, don't fetch signed URLs until the viewer explicitly taps. DISALLOWED
+  (CSAM) is still rejected + deleted on every surface, and the stub scanner still
+  returns CLEAN for everything, so nothing is flagged until a real classifier
+  lands — the launch-blocker warning stands. Verified: NSFW-flagged-approved in
+  chat, NSFW-rejected on profiles, DISALLOWED rejected in both (unit tests).
 - **2026-07-03** — Phase 3 complete: chat images + presence. Chat images (§6B,
   `chat/ChatMedia*`): `POST /conversations/{id}/media-uploads` presigns a PUT into
   the same `quarantine/` prefix (membership-checked, conversation id recorded as

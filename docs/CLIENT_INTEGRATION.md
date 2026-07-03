@@ -147,10 +147,11 @@ served from a public URL:
    that same `Content-Type` within 10 minutes.
 2. `POST /conversations/{id}/messages` `{mediaStorageKey: storageKey}` (with or
    without a `body`). The message's `media` field starts as
-   `{id, status: "pending", blurhash: null}` — render a placeholder. When the
-   server has validated/re-encoded/scanned the image you get a `media` WebSocket
-   event (below) with `status: "approved"` (+ blurhash) or `"rejected"`; a
-   rejected image should be shown as removed. Each `storageKey` is single-use.
+   `{id, status: "pending", nsfw: false, blurhash: null}` — render a placeholder.
+   When the server has validated/re-encoded/scanned the image you get a `media`
+   WebSocket event (below) with `status: "approved"` (+ `nsfw` + blurhash) or
+   `"rejected"`; a rejected image should be shown as removed. Each `storageKey`
+   is single-use.
 3. To display an approved image: `GET /conversations/{id}/media/{mediaId}` →
    `{mediaId, urls: {thumb, card, full}, expiresAt}`. **These are signed URLs that
    expire after 5 minutes** — fetch them when the image scrolls into view, don't
@@ -158,8 +159,30 @@ served from a public URL:
    storage). While still processing the endpoint returns **409**; rejected or
    foreign media is a **404**.
 - Message objects everywhere (`lastMessage`, the messages page, `message` events)
-  carry `media: {id, status, blurhash} | null` — the bytes always go through the
-  signed-URL endpoint above, per participant, authorized on every fetch.
+  carry `media: {id, status, nsfw, blurhash} | null` — the bytes always go through
+  the signed-URL endpoint above, per participant, authorized on every fetch.
+
+#### NSFW chat images — blur until tapped (client REQUIREMENT)
+
+Adult-but-legal images are **allowed in chat** but come back with `nsfw: true`
+(per-surface policy — the same image would be rejected as a profile photo). The
+client is the enforcement point for the reveal, so this is a requirement, not a
+suggestion:
+
+- When `media.nsfw` is true, render **only the blurhash placeholder** with a
+  "tap to reveal" affordance. Do **not** call the signed-URL endpoint — and
+  therefore never load the actual bytes — until the viewer explicitly taps.
+  (The blurhash is a 32×32 gradient, so nothing recognizable leaks.)
+- The reveal is per-viewer and should not be sticky across messages: each
+  `nsfw` image gets its own tap. Remembering the choice per *conversation* is an
+  acceptable UX refinement; auto-revealing globally is not.
+- Apply the same rule to the conversation list: if `lastMessage.media.nsfw` is
+  true, show a generic "Photo" label/placeholder there, never a thumbnail.
+- `nsfw` can be true the moment the `media` event arrives — check it before
+  swapping the placeholder for the real image on that event, too.
+- Note: until a real classifier replaces the backend's stub scanner, `nsfw` is
+  always false in practice. Build the UI against the field now so it lights up
+  when the real provider lands (backend `ImageContentScanner` — §9).
 
 ## 7. Chat — realtime (STOMP over WebSocket)
 
@@ -181,7 +204,7 @@ This part is not in the OpenAPI spec. The endpoint is **`/ws`** (so
 { "type": "message",  "conversationId": 7, "message": { "id": 101, "senderId": 2, "body": "hey", "media": null, "createdAt": "2026-07-03T07:00:00Z", "readAt": null } }
 { "type": "read",     "conversationId": 7, "readerId": 2 }                                        // user 2 read your messages
 { "type": "typing",   "conversationId": 7, "typingUserId": 2 }                                    // user 2 is typing
-{ "type": "media",    "conversationId": 7, "media": { "id": 30, "status": "approved", "blurhash": "LKO2…" } } // image 30 finished processing (or "rejected")
+{ "type": "media",    "conversationId": 7, "media": { "id": 30, "status": "approved", "nsfw": false, "blurhash": "LKO2…" } } // image 30 finished processing (or "rejected"); nsfw:true → blur until tapped (§6)
 { "type": "presence", "conversationId": 7, "presenceUserId": 2, "online": true }                  // user 2 came online (or false: went offline)
 ```
 

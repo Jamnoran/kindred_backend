@@ -2,6 +2,7 @@ package com.kindred.api.photo
 
 import com.kindred.api.media.ImageContentScanner
 import com.kindred.api.media.MediaStorage
+import com.kindred.api.media.ScanVerdict
 import com.kindred.api.media.ProfilePhotoProcessor
 import com.kindred.api.media.UnsupportedImageBytesException
 import org.slf4j.LoggerFactory
@@ -51,9 +52,10 @@ class PhotoProcessingService(
             return
         }
 
+        // profile surface policy (§9): only CLEAN is served — NSFW is chat-only
         val scan = scanner.scan(processed.sizes.getValue("full"))
-        if (!scan.allowed) {
-            log.warn("photo {} failed content scan: {}", photoId, scan.reason)
+        if (scan.verdict != ScanVerdict.CLEAN) {
+            log.warn("photo {} failed content scan ({}): {}", photoId, scan.verdict, scan.reason)
             reject(photo, quarantineKey)
             return
         }

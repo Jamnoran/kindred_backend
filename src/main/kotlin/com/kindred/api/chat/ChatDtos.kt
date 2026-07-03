@@ -45,11 +45,13 @@ data class ChatMediaUploadResponse(
 data class ChatMediaSummary(
     val id: Long,
     val status: ModerationStatus,
+    /** true → render the blurhash and require an explicit tap before fetching the signed URLs */
+    val nsfw: Boolean,
     val blurhash: String?,
 ) {
     companion object {
         fun from(media: ChatMedia?): ChatMediaSummary? = media?.let {
-            ChatMediaSummary(requireNotNull(it.id), it.moderationStatus, it.blurhash)
+            ChatMediaSummary(requireNotNull(it.id), it.moderationStatus, it.isNsfw, it.blurhash)
         }
     }
 }

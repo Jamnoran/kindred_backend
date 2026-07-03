@@ -4,6 +4,7 @@ import com.kindred.api.media.ImageContentScanner
 import com.kindred.api.media.MediaStorage
 import com.kindred.api.media.ProfilePhotoProcessor
 import com.kindred.api.media.ScanResult
+import com.kindred.api.media.ScanVerdict
 import com.kindred.api.photo.ModerationStatus
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -22,6 +23,7 @@ import java.io.ByteArrayOutputStream
 import java.util.Optional
 import javax.imageio.ImageIO
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -57,12 +59,13 @@ class ChatMediaProcessingServiceTest {
         val media = pendingMedia()
         whenever(chatMedia.findById(30L)).thenReturn(Optional.of(media))
         whenever(storage.get(quarantineKey)).thenReturn(jpeg())
-        whenever(scanner.scan(any())).thenReturn(ScanResult(allowed = true))
+        whenever(scanner.scan(any())).thenReturn(ScanResult(ScanVerdict.CLEAN))
         whenever(chatMedia.save(any())).thenAnswer { it.arguments[0] }
 
         service.process(30L)
 
         assertEquals(ModerationStatus.approved, media.moderationStatus)
+        assertFalse(media.isNsfw)
         assertNotNull(media.blurhash)
         assertTrue(media.storageKey.matches(Regex("chat-media/[0-9a-f]{32}")))
 
@@ -75,7 +78,25 @@ class ChatMediaProcessingServiceTest {
         )
         verify(storage).delete(quarantineKey)
         verify(relayInstance).publish(
-            ChatEvent(type = "media", conversationId = 7L, media = ChatMediaSummary(30L, ModerationStatus.approved, media.blurhash)),
+            ChatEvent(type = "media", conversationId = 7L, media = ChatMediaSummary(30L, ModerationStatus.approved, false, media.blurhash)),
+        )
+    }
+
+    @Test
+    fun `NSFW is approved for chat but flagged so clients blur it`() {
+        val media = pendingMedia()
+        whenever(chatMedia.findById(30L)).thenReturn(Optional.of(media))
+        whenever(storage.get(quarantineKey)).thenReturn(jpeg())
+        whenever(scanner.scan(any())).thenReturn(ScanResult(ScanVerdict.NSFW, reason = "classifier: explicit"))
+        whenever(chatMedia.save(any())).thenAnswer { it.arguments[0] }
+
+        service.process(30L)
+
+        assertEquals(ModerationStatus.approved, media.moderationStatus)
+        assertTrue(media.isNsfw)
+        verify(storage, times(3)).put(any(), any(), eq("image/jpeg"))
+        verify(relayInstance).publish(
+            ChatEvent(type = "media", conversationId = 7L, media = ChatMediaSummary(30L, ModerationStatus.approved, true, media.blurhash)),
         )
     }
 
@@ -91,16 +112,16 @@ class ChatMediaProcessingServiceTest {
         verify(storage, never()).put(any(), any(), any())
         verify(storage).delete(quarantineKey)
         verify(relayInstance).publish(
-            ChatEvent(type = "media", conversationId = 7L, media = ChatMediaSummary(30L, ModerationStatus.rejected, null)),
+            ChatEvent(type = "media", conversationId = 7L, media = ChatMediaSummary(30L, ModerationStatus.rejected, false, null)),
         )
     }
 
     @Test
-    fun `failed content scan rejects the media`() {
+    fun `disallowed content is rejected even in chat`() {
         val media = pendingMedia()
         whenever(chatMedia.findById(30L)).thenReturn(Optional.of(media))
         whenever(storage.get(quarantineKey)).thenReturn(jpeg())
-        whenever(scanner.scan(any())).thenReturn(ScanResult(allowed = false, reason = "csam-hit"))
+        whenever(scanner.scan(any())).thenReturn(ScanResult(ScanVerdict.DISALLOWED, reason = "csam-hit"))
 
         service.process(30L)
 

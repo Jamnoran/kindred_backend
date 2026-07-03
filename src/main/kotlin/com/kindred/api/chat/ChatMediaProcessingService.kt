@@ -3,6 +3,7 @@ package com.kindred.api.chat
 import com.kindred.api.media.ImageContentScanner
 import com.kindred.api.media.MediaStorage
 import com.kindred.api.media.ProfilePhotoProcessor
+import com.kindred.api.media.ScanVerdict
 import com.kindred.api.media.UnsupportedImageBytesException
 import com.kindred.api.photo.ModerationStatus
 import org.slf4j.LoggerFactory
@@ -57,8 +58,10 @@ class ChatMediaProcessingService(
             return
         }
 
+        // chat surface policy (§9): NSFW is allowed but flagged — clients keep it
+        // blurred until the viewer opts in. Only DISALLOWED (CSAM etc.) is dropped.
         val scan = scanner.scan(processed.sizes.getValue("full"))
-        if (!scan.allowed) {
+        if (scan.verdict == ScanVerdict.DISALLOWED) {
             log.warn("chat media {} failed content scan: {}", mediaId, scan.reason)
             reject(media, quarantineKey)
             return
@@ -72,6 +75,7 @@ class ChatMediaProcessingService(
 
         media.storageKey = baseKey
         media.blurhash = processed.blurhash
+        media.isNsfw = scan.verdict == ScanVerdict.NSFW
         media.moderationStatus = ModerationStatus.approved
         chatMedia.save(media)
         broadcastOutcome(media)

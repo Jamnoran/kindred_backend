@@ -63,7 +63,7 @@ class ChatControllerTest {
         whenever(chatService.send(1L, 7L, null, key)).thenReturn(
             MessageResponse(
                 id = 101L, senderId = 1L, body = null,
-                media = ChatMediaSummary(id = 30L, status = ModerationStatus.pending, blurhash = null),
+                media = ChatMediaSummary(id = 30L, status = ModerationStatus.pending, nsfw = false, blurhash = null),
                 createdAt = Instant.now(), readAt = null,
             ),
         )
