@@ -67,12 +67,34 @@ Legend: `[ ]` todo · `[x]` done · `[~]` in progress / partially done
 
 - [x] `users.premium_since` + `PremiumService` entitlement layer + `GET /premium` status
 - [x] Gate image messaging in chat: enabled when **either** participant is premium (402 otherwise)
-- [ ] Payment provider integration (checkout + verified webhook → `PremiumService.grant`)
+- [x] Stripe Checkout integration (one-off payment + signature-verified webhook → `grant`; docs/STRIPE_SETUP.md)
+- [ ] Compose smoke test of a real test-mode purchase (`stripe listen` + 4242 card)
 
 ---
 
 ## Work log
 
+- **2026-07-05** — Stripe Checkout for the premium purchase (`premium/Stripe*`,
+  stripe-java 33.1.0): `POST /premium/checkout` (409 if already premium) creates
+  a one-off-payment Checkout Session — our user id rides along as
+  `client_reference_id`, price/success/cancel come from `kindred.stripe.*`
+  (`STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_PRICE_ID` env; empty
+  defaults keep the app bootable without Stripe) — and the client just redirects
+  to the returned URL, no Stripe.js. Granting happens **only** in
+  `POST /api/v1/stripe/webhook` (public + CSRF-exempt in SecurityConfig;
+  authenticity = `Stripe-Signature` verified against the webhook secret, bad
+  signature → 400): `checkout.session.completed` / `…async_payment_succeeded`
+  with `payment_status: "paid"` → `grant(client_reference_id)`; the session JSON
+  is read raw (Jackson) so a dashboard API-version bump can't break parsing, and
+  grant idempotency makes Stripe's retries safe. The success redirect
+  deliberately grants nothing — clients poll `GET /premium` after returning.
+  Refunds do NOT auto-revoke (documented decision). Verified: unit tests with
+  **real signature computation** (valid/invalid/wrong-secret, unpaid ignored,
+  async variant grants, missing client_reference_id logged not granted) +
+  MockMvc (checkout 201/409, webhook public/CSRF-exempt, bad sig 400); spec
+  regenerated; setup walkthrough in docs/STRIPE_SETUP.md (CLI forwarding, test
+  cards, go-live checklist); CLIENT_INTEGRATION.md purchase flow added. Open:
+  a real test-mode purchase end-to-end (needs compose + `stripe listen`).
 - **2026-07-05** — Premium image messaging (`premium/` package): premium is a
   one-time upgrade recorded as `users.premium_since` (V6; NULL = free, never
   expires). Sending images in a conversation now requires that **at least one

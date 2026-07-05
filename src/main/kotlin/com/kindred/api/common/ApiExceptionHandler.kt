@@ -15,6 +15,8 @@ import com.kindred.api.media.UnsupportedImageTypeException
 import com.kindred.api.photo.InvalidStorageKeyException
 import com.kindred.api.photo.PhotoLimitReachedException
 import com.kindred.api.photo.PhotoNotFoundException
+import com.kindred.api.premium.AlreadyPremiumException
+import com.kindred.api.premium.InvalidStripeWebhookException
 import com.kindred.api.premium.PremiumRequiredException
 import com.kindred.api.profile.LocationNotSetException
 import com.kindred.api.profile.ProfileNotFoundException
@@ -76,6 +78,12 @@ class ApiExceptionHandler {
 
     @ExceptionHandler(PremiumRequiredException::class)
     fun premiumRequired(e: PremiumRequiredException) = problem(HttpStatus.PAYMENT_REQUIRED, e.message)
+
+    @ExceptionHandler(AlreadyPremiumException::class)
+    fun alreadyPremium(e: AlreadyPremiumException) = problem(HttpStatus.CONFLICT, e.message)
+
+    @ExceptionHandler(InvalidStripeWebhookException::class)
+    fun invalidStripeWebhook(e: InvalidStripeWebhookException) = problem(HttpStatus.BAD_REQUEST, e.message)
 
     @ExceptionHandler(InvalidStorageKeyException::class)
     fun invalidStorageKey(e: InvalidStorageKeyException) = problem(HttpStatus.BAD_REQUEST, e.message)

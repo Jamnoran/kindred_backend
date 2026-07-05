@@ -75,9 +75,14 @@ separate repo (`kindred_web`) and codegens its client from `openapi/kindred-api.
   Image messaging in a conversation requires ≥1 premium participant (then both can
   send); enforced at the media-upload presign and at send (`mediaStorageKey`) →
   402. `GET /conversations` exposes `imageMessagingEnabled`; `GET /premium` gives
-  own status. `PremiumService.grant()` is idempotent and has **no public endpoint
-  on purpose** — it waits for a verified payment webhook (not built yet; until
-  then premium is set directly in the DB). Text chat and viewing received images
-  are never gated.
+  own status. Text chat and viewing received images are never gated.
+- **Stripe** (`premium/Stripe*`, setup: docs/STRIPE_SETUP.md): `POST
+  /premium/checkout` → Checkout Session (redirect; user id in
+  `client_reference_id`); premium is granted **only** by the signature-verified
+  `POST /api/v1/stripe/webhook` (public + CSRF-exempt in SecurityConfig, never by
+  the success redirect). Config `kindred.stripe.*` from `STRIPE_*` env vars —
+  empty defaults keep boots/tests working without Stripe. `grant()` is
+  idempotent (webhook retries safe); refunds don't auto-revoke. Webhook tests
+  compute real signatures via `Webhook.Util.computeHmacSha256`.
 - Matches are stored ordered (`user_a < user_b`, DB CHECK). "Who liked you" is
   free by design. Discovery scoring is transparent and user-weighted (§7).

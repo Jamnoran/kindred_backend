@@ -146,9 +146,20 @@ send. Per conversation, read `imageMessagingEnabled` from `GET /conversations`:
 when `false`, hide/disable the attach-image affordance and offer the upgrade
 instead. The server enforces it too: the upload presign and any message with a
 `mediaStorageKey` return **402** in a free/free chat. Text messages are never
-gated, and viewing already-sent images is never gated. The caller's own account
-status is `GET /premium` → `{premium, premiumSince}` (the purchase flow itself
-is not built yet — no endpoint grants premium).
+gated, and viewing already-sent images is never gated.
+
+Buying premium (Stripe Checkout — backend setup in `docs/STRIPE_SETUP.md`):
+
+1. `GET /premium` → `{premium, premiumSince}` — the caller's own status. Hide
+   the buy button when already `premium: true`.
+2. `POST /premium/checkout` (no body) → 201 `{checkoutUrl}`; **409** if already
+   premium. Redirect the browser to `checkoutUrl` (Stripe-hosted page — no
+   Stripe.js needed).
+3. Stripe sends the user back to the configured success/cancel URL in the web
+   app. The upgrade is granted **asynchronously by webhook**, usually within a
+   couple of seconds — on the success page, poll `GET /premium` until
+   `premium: true`, then refetch `GET /conversations` so `imageMessagingEnabled`
+   flips. Never treat merely landing on the success URL as proof of payment.
 
 Same three-step shape as profile photos, but scoped to a conversation and never
 served from a public URL:

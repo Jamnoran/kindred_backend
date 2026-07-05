@@ -55,6 +55,8 @@ class SecurityConfig {
                         "/api/v1/auth/login",
                         "/api/v1/auth/verify-email",
                         "/api/v1/auth/resend-verification",
+                        // Stripe calls this, not users — authenticity via Stripe-Signature
+                        "/api/v1/stripe/webhook",
                     ).permitAll()
                     .anyRequest().authenticated()
             }
@@ -64,6 +66,8 @@ class SecurityConfig {
             .csrf { csrf ->
                 csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 csrf.csrfTokenRequestHandler(SpaCsrfTokenRequestHandler())
+                // server-to-server POST from Stripe carries no CSRF cookie/header
+                csrf.ignoringRequestMatchers("/api/v1/stripe/webhook")
             }
             .logout { logout ->
                 logout.logoutUrl("/api/v1/auth/logout")
