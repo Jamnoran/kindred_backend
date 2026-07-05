@@ -39,6 +39,7 @@ dependencies {
     implementation("org.jobrunr:jobrunr-spring-boot-3-starter:7.4.1")
     implementation("com.sksamuel.scrimage:scrimage-core:4.1.3")
     implementation("com.sksamuel.scrimage:scrimage-webp:4.1.3")
+    implementation("com.stripe:stripe-java:33.1.0")
     runtimeOnly("com.mysql:mysql-connector-j")
     // only for the forked `generateOpenApiDocs` run (openapi profile) — not shipped in the jar
     developmentOnly("com.h2database:h2")

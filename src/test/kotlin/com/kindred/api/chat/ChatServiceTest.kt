@@ -5,6 +5,8 @@ import com.kindred.api.discovery.MatchRepository
 import com.kindred.api.photo.InvalidStorageKeyException
 import com.kindred.api.photo.ModerationStatus
 import com.kindred.api.photo.PhotoRepository
+import com.kindred.api.premium.PremiumRequiredException
+import com.kindred.api.premium.PremiumService
 import com.kindred.api.profile.ProfileRepository
 import org.jobrunr.scheduling.JobRequestScheduler
 import org.junit.jupiter.api.Test
@@ -33,6 +35,7 @@ class ChatServiceTest {
     private val profiles: ProfileRepository = mock()
     private val photos: PhotoRepository = mock()
     private val chatMedia: ChatMediaRepository = mock()
+    private val premium: PremiumService = mock()
     private val jobs: JobRequestScheduler = mock()
     private val relayInstance: ChatEventRelay = mock()
     private val relay: org.springframework.beans.factory.ObjectProvider<ChatEventRelay> = mock {
@@ -44,7 +47,7 @@ class ChatServiceTest {
     }
     private val now = Instant.parse("2026-07-02T12:00:00Z")
     private val service = ChatService(
-        conversations, messages, matches, profiles, photos, chatMedia, jobs,
+        conversations, messages, matches, profiles, photos, chatMedia, premium, jobs,
         Clock.fixed(now, ZoneOffset.UTC), relay, presence, "http://cdn.test",
     )
 
@@ -53,6 +56,11 @@ class ChatServiceTest {
     private fun stubConversation(convoId: Long = 7L, matchId: Long = 3L, userA: Long = 1L, userB: Long = 2L) {
         whenever(conversations.findById(convoId)).thenReturn(Optional.of(Conversation(id = convoId, matchId = matchId)))
         whenever(matches.findById(matchId)).thenReturn(Optional.of(Match(id = matchId, userA = userA, userB = userB)))
+    }
+
+    /** The image gate: at least one of the two participants upgraded. */
+    private fun stubPremiumChat(userA: Long = 1L, userB: Long = 2L) {
+        whenever(premium.anyPremium(listOf(userA, userB))).thenReturn(true)
     }
 
     @Test
@@ -71,6 +79,7 @@ class ChatServiceTest {
     @Test
     fun `sending an image records pending media and enqueues processing`() {
         stubConversation()
+        stubPremiumChat()
         whenever(chatMedia.save(any())).thenAnswer { (it.arguments[0] as ChatMedia).apply { id = 30L } }
         whenever(messages.save(any())).thenAnswer { (it.arguments[0] as Message).apply { id = 100L } }
 
@@ -93,8 +102,40 @@ class ChatServiceTest {
     }
 
     @Test
+    fun `image sends are blocked while neither participant is premium`() {
+        stubConversation()
+
+        assertThrows<PremiumRequiredException> { service.send(1L, 7L, null, validMediaKey) }
+        assertThrows<PremiumRequiredException> { service.send(1L, 7L, "caption too", validMediaKey) }
+        verify(chatMedia, never()).save(any())
+        verify(messages, never()).save(any())
+    }
+
+    @Test
+    fun `either participant premium unlocks images for both`() {
+        stubConversation(userA = 1L, userB = 2L)
+        stubPremiumChat() // only user 2 needs to be premium for this to pass — anyPremium covers both
+        whenever(chatMedia.save(any())).thenAnswer { (it.arguments[0] as ChatMedia).apply { id = 30L } }
+        whenever(messages.save(any())).thenAnswer { (it.arguments[0] as Message).apply { id = 100L } }
+
+        val sent = service.send(1L, 7L, null, validMediaKey)
+
+        assertEquals(30L, sent.media?.id)
+    }
+
+    @Test
+    fun `text messages never need premium`() {
+        stubConversation()
+        whenever(messages.save(any())).thenAnswer { (it.arguments[0] as Message).apply { id = 100L } }
+
+        assertEquals("hi", service.send(1L, 7L, "hi").body)
+        verify(premium, never()).anyPremium(any())
+    }
+
+    @Test
     fun `media storage keys are validated and single-use`() {
         stubConversation()
+        stubPremiumChat()
 
         assertThrows<InvalidStorageKeyException> { service.send(1L, 7L, null, "chat-media/abcd") }
         assertThrows<InvalidStorageKeyException> { service.send(1L, 7L, null, "quarantine/../etc/passwd") }
@@ -107,6 +148,7 @@ class ChatServiceTest {
     @Test
     fun `a key already used for a profile photo is rejected`() {
         stubConversation()
+        stubPremiumChat()
         whenever(photos.existsByStorageKey(validMediaKey)).thenReturn(true)
 
         assertThrows<InvalidStorageKeyException> { service.send(1L, 7L, null, validMediaKey) }
@@ -163,6 +205,8 @@ class ChatServiceTest {
         )
         whenever(photos.findAllByProfileUserIdInAndModerationStatusAndIsPrimaryTrue(any(), any())).thenReturn(emptyList())
         whenever(presenceInstance.onlineOf(listOf(2L))).thenReturn(setOf(2L))
+        // the *other* participant being premium is enough to unlock images for this chat
+        whenever(premium.premiumIdsOf(listOf(2L, 1L))).thenReturn(setOf(2L))
         whenever(messages.findFirstByConversationIdOrderByIdDesc(7L))
             .thenReturn(Message(id = 50L, conversationId = 7L, senderId = 2L, body = "hey", createdAt = now))
         whenever(messages.countByConversationIdAndSenderIdNotAndReadAtIsNull(7L, 1L)).thenReturn(1L)
@@ -173,6 +217,7 @@ class ChatServiceTest {
         assertEquals(2L, list[0].otherUser.userId)
         assertEquals("Bea", list[0].otherUser.displayName)
         assertTrue(list[0].otherUser.online)
+        assertTrue(list[0].imageMessagingEnabled)
         assertEquals("hey", list[0].lastMessage?.body)
         assertEquals(1L, list[0].unreadCount)
     }
@@ -183,7 +228,7 @@ class ChatServiceTest {
             on { ifAvailable } doReturn null
         }
         val svc = ChatService(
-            conversations, messages, matches, profiles, photos, chatMedia, jobs,
+            conversations, messages, matches, profiles, photos, chatMedia, premium, jobs,
             Clock.fixed(now, ZoneOffset.UTC), relay, offlinePresence, "http://cdn.test",
         )
         val match = Match(id = 3L, userA = 1L, userB = 2L, createdAt = now)
@@ -194,6 +239,9 @@ class ChatServiceTest {
         )
         whenever(photos.findAllByProfileUserIdInAndModerationStatusAndIsPrimaryTrue(any(), any())).thenReturn(emptyList())
 
-        assertFalse(svc.listConversations(1L)[0].otherUser.online)
+        val convo = svc.listConversations(1L)[0]
+        assertFalse(convo.otherUser.online)
+        // neither participant premium (empty premium-ids stub) → image messaging off
+        assertFalse(convo.imageMessagingEnabled)
     }
 }

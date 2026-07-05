@@ -1,8 +1,11 @@
 package com.kindred.api.chat
 
+import com.kindred.api.discovery.Match
 import com.kindred.api.discovery.MatchRepository
 import com.kindred.api.discovery.PhotoSummary
 import com.kindred.api.photo.InvalidStorageKeyException
+import com.kindred.api.premium.PremiumRequiredException
+import com.kindred.api.premium.PremiumService
 import com.kindred.api.photo.ModerationStatus
 import com.kindred.api.photo.Photo
 import com.kindred.api.photo.PhotoRepository
@@ -23,6 +26,7 @@ class ChatService(
     private val profiles: ProfileRepository,
     private val photos: PhotoRepository,
     private val chatMedia: ChatMediaRepository,
+    private val premium: PremiumService,
     private val jobs: JobRequestScheduler,
     private val clock: Clock,
     // absent when Redis is (openapi spec-export boot, slice tests) — broadcast no-ops
@@ -46,6 +50,7 @@ class ChatService(
         val primaryPhotos = photos.findAllByProfileUserIdInAndModerationStatusAndIsPrimaryTrue(otherIds, ModerationStatus.approved)
             .associateBy(Photo::profileUserId)
         val onlineIds = presence.ifAvailable?.onlineOf(otherIds) ?: emptySet()
+        val premiumIds = premium.premiumIdsOf(otherIds + userId)
 
         return convos.mapNotNull { convo ->
             val match = myMatches[convo.matchId] ?: return@mapNotNull null
@@ -56,6 +61,7 @@ class ChatService(
                 id = convoId,
                 matchId = requireNotNull(match.id),
                 matchedAt = match.createdAt,
+                imageMessagingEnabled = userId in premiumIds || otherId in premiumIds,
                 otherUser = ConversationParticipant(
                     userId = otherId,
                     displayName = profile.displayName,
@@ -78,9 +84,10 @@ class ChatService(
 
     @Transactional
     fun send(userId: Long, conversationId: Long, body: String?, mediaStorageKey: String? = null): MessageResponse {
-        requireMembership(userId, conversationId)
+        val match = requireMembership(userId, conversationId)
         val trimmed = body?.trim().takeUnless { it.isNullOrEmpty() }
         if (trimmed == null && mediaStorageKey == null) throw EmptyMessageException()
+        if (mediaStorageKey != null) requirePremiumParticipant(match)
 
         val media = mediaStorageKey?.let { submitMedia(userId, conversationId, it) }
         val message = messages.save(
@@ -140,10 +147,24 @@ class ChatService(
      * nonexistence, so conversation ids can't be probed.
      */
     @Transactional(readOnly = true)
-    fun requireMembership(userId: Long, conversationId: Long) {
+    fun requireMembership(userId: Long, conversationId: Long): Match {
         val convo = conversations.findById(conversationId).orElseThrow { ConversationNotFoundException() }
         val match = matches.findById(convo.matchId).orElseThrow { ConversationNotFoundException() }
         if (!match.involves(userId)) throw ConversationNotFoundException()
+        return match
+    }
+
+    /** Membership + the premium gate for image messaging (also guards the upload presign). */
+    @Transactional(readOnly = true)
+    fun requireImageMessaging(userId: Long, conversationId: Long) {
+        requirePremiumParticipant(requireMembership(userId, conversationId))
+    }
+
+    /** Images are premium: allowed for both sides as long as *either* participant upgraded. */
+    private fun requirePremiumParticipant(match: Match) {
+        if (!premium.anyPremium(listOf(match.userA, match.userB))) {
+            throw PremiumRequiredException("sending images in this chat")
+        }
     }
 
     private fun toResponse(message: Message): MessageResponse =

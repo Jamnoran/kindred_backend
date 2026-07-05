@@ -65,3 +65,12 @@ kindred:
   media:
     # CDN (or MinIO in dev) base URL that approved profile photos are served from
     public-base-url: ${MEDIA_PUBLIC_BASE_URL:http://localhost:9000/kindred-media}
+  # Stripe — premium one-time purchase (setup walkthrough: docs/STRIPE_SETUP.md).
+  # Empty defaults keep the app bootable without Stripe; checkout just fails until set.
+  stripe:
+    secret-key: ${STRIPE_SECRET_KEY:}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+    price-id: ${STRIPE_PRICE_ID:}
+    # where Stripe sends the browser after payment / cancel (web app routes)
+    success-url: ${STRIPE_SUCCESS_URL:http://localhost:3000/premium/success}
+    cancel-url: ${STRIPE_CANCEL_URL:http://localhost:3000/premium/cancelled}

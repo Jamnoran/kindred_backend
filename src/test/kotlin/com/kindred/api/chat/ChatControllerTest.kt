@@ -91,6 +91,20 @@ class ChatControllerTest {
     }
 
     @Test
+    fun `image sends without a premium participant are 402`() {
+        val key = "quarantine/" + "ef".repeat(16)
+        whenever(chatService.send(1L, 7L, null, key))
+            .thenThrow(com.kindred.api.premium.PremiumRequiredException("sending images in this chat"))
+
+        mockMvc.perform(
+            post("/api/v1/conversations/7/messages").with(user(alice)).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"mediaStorageKey":"$key"}"""),
+        )
+            .andExpect(status().isPaymentRequired)
+    }
+
+    @Test
     fun `media upload presign is scoped to the conversation`() {
         whenever(chatMediaService.presignUpload(1L, 7L, "image/jpeg")).thenReturn(
             PresignedUpload(uploadUrl = "http://minio/put", storageKey = "quarantine/abc", expiresAt = Instant.now()),

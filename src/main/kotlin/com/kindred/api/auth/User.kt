@@ -34,4 +34,8 @@ class User(
     // Soft-delete marker; the GDPR erasure job hard-deletes later (ARCHITECTURE.md §9)
     @Column(name = "deleted_at")
     var deletedAt: Instant? = null,
+
+    // One-time paid upgrade (never expires); NULL = free account
+    @Column(name = "premium_since")
+    var premiumSince: Instant? = null,
 )

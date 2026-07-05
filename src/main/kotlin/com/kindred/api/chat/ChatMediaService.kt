@@ -34,7 +34,8 @@ class ChatMediaService(
     }
 
     fun presignUpload(userId: Long, conversationId: Long, contentType: String): PresignedUpload {
-        chatService.requireMembership(userId, conversationId)
+        // membership + the premium image gate — free/free chats can't even upload
+        chatService.requireImageMessaging(userId, conversationId)
         return mediaUploadService.presignChatImageUpload(userId, conversationId, contentType)
     }
 

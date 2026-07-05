@@ -3,6 +3,7 @@ package com.kindred.api.chat
 import com.kindred.api.media.MediaUploadService
 import com.kindred.api.media.S3Properties
 import com.kindred.api.photo.ModerationStatus
+import com.kindred.api.premium.PremiumRequiredException
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -60,13 +61,20 @@ class ChatMediaServiceTest {
     )
 
     @Test
-    fun `upload presign checks membership and lands in quarantine`() {
+    fun `upload presign checks membership plus the premium image gate and lands in quarantine`() {
         val upload = service.presignUpload(1L, 7L, "image/jpeg")
 
         // PER_CLASS lifecycle shares the mock across tests, so no exact counts here
-        verify(chatService, atLeastOnce()).requireMembership(1L, 7L)
+        verify(chatService, atLeastOnce()).requireImageMessaging(1L, 7L)
         assertTrue(upload.storageKey.startsWith("quarantine/"))
         assertTrue(upload.uploadUrl.startsWith("http://localhost:9000/kindred-media/quarantine/"))
+    }
+
+    @Test
+    fun `upload presign is refused when neither participant is premium`() {
+        whenever(chatService.requireImageMessaging(5L, 7L)).doThrow(PremiumRequiredException("sending images in this chat"))
+
+        assertThrows<PremiumRequiredException> { service.presignUpload(5L, 7L, "image/jpeg") }
     }
 
     @Test
