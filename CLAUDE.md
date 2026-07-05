@@ -5,6 +5,12 @@ Gradle (Kotlin DSL), MySQL 8 (Flyway), Redis (sessions + chat relay + presence),
 MinIO/S3 (images), JobRunr (async image pipeline). The web frontend lives in a
 separate repo (`kindred_web`) and codegens its client from `openapi/kindred-api.json`.
 
+> **Keep this file current.** Whenever you learn something non-obvious the hard
+> way — an environment quirk, a library gotcha, a convention you had to reverse-
+> engineer, a decision with a non-obvious rationale — add it here (and prune
+> anything this file gets wrong) in the same commit as the work. The test is:
+> "would a fresh session waste tokens rediscovering this?" If yes, it belongs here.
+
 ## Build & test — read this first
 
 - **The gradle wrapper (`./gradlew`) fails in Claude Code remote sessions**: the
@@ -20,6 +26,27 @@ separate repo (`kindred_web`) and codegens its client from `openapi/kindred-api.
   localhost:6379 is down — "skipped" there is normal, not a failure.
 - H2 can't run the MySQL-specific migrations (POINT SRID etc.), so tests don't run
   Flyway; new migrations only get exercised against real MySQL (`docker compose up`).
+
+### Testing gotchas (learned the hard way)
+
+- Before writing a mock/stub helper, check how existing tests do it —
+  **mockito-kotlin already covers nearly everything**. E.g. construction-time
+  stubbing is `mock { on { foo } doReturn bar }` (import
+  `org.mockito.kotlin.doReturn`; see the `ObjectProvider` mocks in
+  ChatServiceTest) — no hand-rolled aliases or wrapper infix functions needed.
+- Mockito 5's inline mock maker is the default: final classes (Kotlin classes,
+  Stripe SDK models like `Session`) mock fine — no workaround needed.
+- Unstubbed mock methods return Mockito defaults (false, empty collections,
+  null) and tests lean on that deliberately — e.g. an unstubbed
+  `PremiumService.premiumIdsOf` means "nobody is premium". Adding a dependency
+  to a service therefore usually breaks few tests: only stub the new collaborator
+  where the test actually exercises it.
+- Services are constructor-injected and tests instantiate them directly, so
+  **adding a constructor parameter means updating every `new` in tests** — grep
+  for `<ClassName>(` before changing a signature.
+- Stripe webhook handling is testable offline: build a real header with
+  `Webhook.Util.computeHmacSha256(secret, "$timestamp.$payload")` as
+  `"t=$timestamp,v1=$sig"` — no network, real verification path.
 
 ## Layout & conventions
 
