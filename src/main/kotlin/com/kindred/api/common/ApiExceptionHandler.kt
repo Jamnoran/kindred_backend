@@ -15,6 +15,7 @@ import com.kindred.api.media.UnsupportedImageTypeException
 import com.kindred.api.photo.InvalidStorageKeyException
 import com.kindred.api.photo.PhotoLimitReachedException
 import com.kindred.api.photo.PhotoNotFoundException
+import com.kindred.api.premium.PremiumRequiredException
 import com.kindred.api.profile.LocationNotSetException
 import com.kindred.api.profile.ProfileNotFoundException
 import com.kindred.api.profile.UnknownInterestException
@@ -72,6 +73,9 @@ class ApiExceptionHandler {
 
     @ExceptionHandler(ChatMediaNotReadyException::class)
     fun chatMediaNotReady(e: ChatMediaNotReadyException) = problem(HttpStatus.CONFLICT, e.message)
+
+    @ExceptionHandler(PremiumRequiredException::class)
+    fun premiumRequired(e: PremiumRequiredException) = problem(HttpStatus.PAYMENT_REQUIRED, e.message)
 
     @ExceptionHandler(InvalidStorageKeyException::class)
     fun invalidStorageKey(e: InvalidStorageKeyException) = problem(HttpStatus.BAD_REQUEST, e.message)

@@ -122,8 +122,9 @@ pending photos. `DELETE /photos/{id}` removes one (re-sorts, re-picks primary).
 ## 6. Chat — REST
 
 - `GET /conversations` → newest-activity-first list:
-  `{id, matchId, matchedAt, otherUser: {userId, displayName, photo, online}, lastMessage, unreadCount}`.
+  `{id, matchId, matchedAt, imageMessagingEnabled, otherUser: {userId, displayName, photo, online}, lastMessage, unreadCount}`.
   `otherUser.online` is live presence (see §7 for the realtime updates).
+  `imageMessagingEnabled` is the premium image gate — see below.
 - `GET /conversations/{id}/messages?limit=50[&before={messageId}]` — **newest
   first, keyset paginated**: first call without `before`, then pass the smallest
   `id` you have to load older history. `limit` 1–100.
@@ -138,6 +139,16 @@ pending photos. `DELETE /photos/{id}` removes one (re-sorts, re-picks primary).
   nonexistent — by design). Treat 404 here as "conversation gone".
 
 ### Chat images (private — signed URLs only)
+
+**Premium gate:** sending images in a conversation requires that **at least one
+of the two participants** has the one-time premium upgrade — then **both** can
+send. Per conversation, read `imageMessagingEnabled` from `GET /conversations`:
+when `false`, hide/disable the attach-image affordance and offer the upgrade
+instead. The server enforces it too: the upload presign and any message with a
+`mediaStorageKey` return **402** in a free/free chat. Text messages are never
+gated, and viewing already-sent images is never gated. The caller's own account
+status is `GET /premium` → `{premium, premiumSince}` (the purchase flow itself
+is not built yet — no endpoint grants premium).
 
 Same three-step shape as profile photos, but scoped to a conversation and never
 served from a public URL:
@@ -266,6 +277,7 @@ Errors are RFC 7807 problem details (`application/problem+json`):
 { "type": "about:blank", "title": "Bad Request", "status": 400, "detail": "..." }
 ```
 
-Handle globally: 401 → login screen; 403 on login → unverified email; 403
-elsewhere → missing CSRF header (§1); 404 on conversations → treat as gone;
-400 → show `detail`.
+Handle globally: 401 → login screen; **402 → premium required** (image
+messaging in a free/free chat — show the upgrade prompt, §6); 403 on login →
+unverified email; 403 elsewhere → missing CSRF header (§1); 404 on
+conversations → treat as gone; 400 → show `detail`.

@@ -59,10 +59,37 @@ Legend: `[ ]` todo · `[x]` done · `[~]` in progress / partially done
 - [ ] Public docs on how matching works
 - [ ] Optional: donation hooks / cosmetic-only perks
 
+## Premium — one-time paid upgrade (product decision 2026-07-05)
+
+> Deliberate departure from ARCHITECTURE.md §10 "no feature paywalls" for the
+> gated features listed here; core dating features (matching, text chat,
+> "who liked you") stay free. Revisit §10/README wording before launch.
+
+- [x] `users.premium_since` + `PremiumService` entitlement layer + `GET /premium` status
+- [x] Gate image messaging in chat: enabled when **either** participant is premium (402 otherwise)
+- [ ] Payment provider integration (checkout + verified webhook → `PremiumService.grant`)
+
 ---
 
 ## Work log
 
+- **2026-07-05** — Premium image messaging (`premium/` package): premium is a
+  one-time upgrade recorded as `users.premium_since` (V6; NULL = free, never
+  expires). Sending images in a conversation now requires that **at least one
+  participant** is premium — one upgrade unlocks the chat for *both* sides.
+  Enforced server-side at both entry points: `POST .../media-uploads` (presign)
+  and `POST .../messages` with a `mediaStorageKey` throw `PremiumRequiredException`
+  → **402** problem detail; text messages and viewing already-received images are
+  never gated. `GET /conversations` gained `imageMessagingEnabled` (batch premium
+  lookup, one query) so the client can hide the attach button up front, and
+  `GET /premium` returns the caller's own `{premium, premiumSince}`.
+  `PremiumService.grant` is idempotent and deliberately has **no public
+  endpoint** — it's reserved for the payment provider's verified completion
+  webhook (checkout integration is the open task above; until then, premium can
+  only be set directly in the DB). Verified: unit tests for the gate (free/free
+  blocked at send + presign, either-side-premium allowed, text ungated,
+  conversation flag) and grant idempotency; OpenAPI spec regenerated;
+  CLIENT_INTEGRATION.md §6/§9 updated.
 - **2026-07-03** — Per-surface NSFW policy (§9): the scanner hook now returns a
   verdict (`CLEAN | NSFW | DISALLOWED`) instead of a boolean. Profile photos
   reject anything non-clean (unchanged behavior); chat **approves NSFW flagged** —

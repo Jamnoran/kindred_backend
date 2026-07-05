@@ -94,6 +94,8 @@ data class ConversationResponse(
     val id: Long,
     val matchId: Long,
     val matchedAt: Instant,
+    /** true when either participant is premium; false → image sends/uploads return 402 */
+    val imageMessagingEnabled: Boolean,
     val otherUser: ConversationParticipant,
     val lastMessage: MessageResponse?,
     val unreadCount: Long,

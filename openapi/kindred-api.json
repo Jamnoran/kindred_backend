@@ -586,6 +586,26 @@
         }
       }
     },
+    "/api/v1/premium": {
+      "get": {
+        "tags": [
+          "premium-controller"
+        ],
+        "operationId": "status",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PremiumStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/meta": {
       "get": {
         "tags": [
@@ -1399,6 +1419,21 @@
           "userId"
         ]
       },
+      "PremiumStatusResponse": {
+        "type": "object",
+        "properties": {
+          "premium": {
+            "type": "boolean"
+          },
+          "premiumSince": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "premium"
+        ]
+      },
       "MetaResponse": {
         "type": "object",
         "properties": {
@@ -1610,6 +1645,9 @@
             "type": "string",
             "format": "date-time"
           },
+          "imageMessagingEnabled": {
+            "type": "boolean"
+          },
           "otherUser": {
             "$ref": "#/components/schemas/ConversationParticipant"
           },
@@ -1623,6 +1661,7 @@
         },
         "required": [
           "id",
+          "imageMessagingEnabled",
           "matchId",
           "matchedAt",
           "otherUser",
