@@ -933,12 +933,34 @@
             "maxLength": 2000,
             "minLength": 0
           },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "woman",
+              "man",
+              "nonbinary"
+            ]
+          },
           "lookingFor": {
             "type": "array",
             "items": {
               "type": "string"
             },
             "maxItems": 10,
+            "minItems": 0
+          },
+          "relationshipStyles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "monogamy",
+                "non_monogamy",
+                "open",
+                "polyamory"
+              ]
+            },
+            "maxItems": 4,
             "minItems": 0
           },
           "interests": {
@@ -982,10 +1004,30 @@
           "bio": {
             "type": "string"
           },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "woman",
+              "man",
+              "nonbinary"
+            ]
+          },
           "lookingFor": {
             "type": "array",
             "items": {
               "type": "string"
+            }
+          },
+          "relationshipStyles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "monogamy",
+                "non_monogamy",
+                "open",
+                "polyamory"
+              ]
             }
           },
           "interests": {
@@ -1017,6 +1059,7 @@
           "locationSet",
           "locationVisibility",
           "lookingFor",
+          "relationshipStyles",
           "userId"
         ]
       },
@@ -1070,12 +1113,39 @@
             "maximum": 120,
             "minimum": 18
           },
+          "genders": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "woman",
+                "man",
+                "nonbinary"
+              ]
+            },
+            "maxItems": 3,
+            "minItems": 0
+          },
           "lookingFor": {
             "type": "array",
             "items": {
               "type": "string"
             },
             "maxItems": 10,
+            "minItems": 0
+          },
+          "relationshipStyles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "monogamy",
+                "non_monogamy",
+                "open",
+                "polyamory"
+              ]
+            },
+            "maxItems": 4,
             "minItems": 0
           },
           "dealbreakers": {
@@ -1115,10 +1185,33 @@
             "type": "integer",
             "format": "int32"
           },
+          "genders": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "woman",
+                "man",
+                "nonbinary"
+              ]
+            }
+          },
           "lookingFor": {
             "type": "array",
             "items": {
               "type": "string"
+            }
+          },
+          "relationshipStyles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "monogamy",
+                "non_monogamy",
+                "open",
+                "polyamory"
+              ]
             }
           },
           "dealbreakers": {
@@ -1136,7 +1229,9 @@
           "ageMin",
           "dealbreakers",
           "distanceKm",
+          "genders",
           "lookingFor",
+          "relationshipStyles",
           "weights"
         ]
       },
@@ -1684,10 +1779,30 @@
           "bio": {
             "type": "string"
           },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "woman",
+              "man",
+              "nonbinary"
+            ]
+          },
           "lookingFor": {
             "type": "array",
             "items": {
               "type": "string"
+            }
+          },
+          "relationshipStyles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "monogamy",
+                "non_monogamy",
+                "open",
+                "polyamory"
+              ]
             }
           },
           "interests": {
@@ -1716,6 +1831,7 @@
           "displayName",
           "interests",
           "lookingFor",
+          "relationshipStyles",
           "score",
           "userId",
           "whyThisPerson"

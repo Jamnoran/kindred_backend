@@ -1,5 +1,6 @@
 package com.kindred.api.discovery
 
+import com.kindred.api.profile.RelationshipStyle
 import org.junit.jupiter.api.Test
 import java.time.Instant
 import kotlin.test.assertEquals
@@ -20,10 +21,13 @@ class DiscoveryScoringTest {
         candidateAgeMax: Int? = 99,
         viewerLookingFor: Set<String> = setOf("dating"),
         candidateLookingFor: Set<String> = setOf("dating"),
+        viewerStyles: Set<RelationshipStyle> = setOf(RelationshipStyle.monogamy),
+        candidateStyles: Set<RelationshipStyle> = setOf(RelationshipStyle.monogamy),
         weights: DiscoveryScoring.Weights = DiscoveryScoring.Weights(),
     ) = DiscoveryScoring.score(
         viewerInterests, candidateInterests, distanceMeters, maxDistanceKm, lastActiveAt, now,
-        viewerAge, candidateAgeMin, candidateAgeMax, viewerLookingFor, candidateLookingFor, weights,
+        viewerAge, candidateAgeMin, candidateAgeMax, viewerLookingFor, candidateLookingFor,
+        viewerStyles, candidateStyles, weights,
     )
 
     @Test
@@ -72,13 +76,34 @@ class DiscoveryScoringTest {
     @Test
     fun `mutual fit drops when the viewer is outside the candidate's age window`() {
         val f = score(viewerAge = 45, candidateAgeMin = 20, candidateAgeMax = 35)
-        assertEquals(0.5, f.mutualFitScore) // age 0 + lookingFor 1, averaged
+        assertEquals(0.667, f.mutualFitScore) // age 0 + lookingFor 1 + style 1, averaged
     }
 
     @Test
     fun `undeclared preferences are neutral`() {
-        val f = score(candidateAgeMin = null, candidateAgeMax = null, candidateLookingFor = emptySet())
+        val f = score(
+            candidateAgeMin = null,
+            candidateAgeMax = null,
+            candidateLookingFor = emptySet(),
+            candidateStyles = emptySet(),
+        )
         assertEquals(0.5, f.mutualFitScore)
+    }
+
+    @Test
+    fun `mismatched relationship styles drop mutual fit, umbrella declarations overlap`() {
+        val monoVsPoly = score(
+            viewerStyles = setOf(RelationshipStyle.monogamy),
+            candidateStyles = setOf(RelationshipStyle.polyamory, RelationshipStyle.non_monogamy),
+        )
+        assertEquals(0.667, monoVsPoly.mutualFitScore) // age 1 + lookingFor 1 + style 0
+
+        val enmVsOpen = score(
+            viewerStyles = setOf(RelationshipStyle.non_monogamy),
+            // profiles store `open` umbrella-normalized to include non_monogamy
+            candidateStyles = setOf(RelationshipStyle.open, RelationshipStyle.non_monogamy),
+        )
+        assertEquals(1.0, enmVsOpen.mutualFitScore)
     }
 
     @Test

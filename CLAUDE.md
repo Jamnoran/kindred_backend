@@ -61,7 +61,7 @@ separate repo (`kindred_web`) and codegens its client from `openapi/kindred-api.
   double-submit cookie (`XSRF-TOKEN` → `X-XSRF-TOKEN` header). Principal is
   `KindredUserDetails` (id, email, emailVerified) — created at login, so anything
   that can change mid-session must be read from the DB, not the principal.
-- Flyway migrations in `src/main/resources/db/migration/` (`V7__...` is next).
+- Flyway migrations in `src/main/resources/db/migration/` (`V9__...` is next).
   MySQL 8 dialect, InnoDB, `TINYINT(1)` booleans, FKs enforced.
 - Time comes from the injected `Clock` bean (`config/TimeConfig`); tests use
   `Clock.fixed`. Mockito-kotlin + kotlin.test assertions; controller tests are
@@ -113,3 +113,12 @@ separate repo (`kindred_web`) and codegens its client from `openapi/kindred-api.
   compute real signatures via `Webhook.Util.computeHmacSha256`.
 - Matches are stored ordered (`user_a < user_b`, DB CHECK). "Who liked you" is
   free by design. Discovery scoring is transparent and user-weighted (§7).
+- **Inclusivity model** (V8): `profiles.gender` is optional/self-identified
+  (`woman|man|nonbinary`; no separate trans categories on purpose). Orientation is
+  never stored as a label — it's `preferences.genders` ("show me", multi-select),
+  the one hard filter DiscoveryService enforces **mutually** (a set filter also
+  hides null-gender profiles, both directions). `relationship_styles`
+  (`monogamy|non_monogamy|open|polyamory`, multi-select) exists on profiles *and*
+  preferences: profile writes get umbrella-normalized (open/poly ⇒ +non_monogamy),
+  preference filters are stored verbatim — don't "fix" that asymmetry, it's what
+  makes a `non_monogamy` filter broad and a `polyamory` filter specific.

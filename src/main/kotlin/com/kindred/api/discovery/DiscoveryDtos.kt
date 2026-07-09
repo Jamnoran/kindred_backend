@@ -2,6 +2,8 @@ package com.kindred.api.discovery
 
 import com.kindred.api.photo.Photo
 import com.kindred.api.photo.PhotoUrls
+import com.kindred.api.profile.Gender
+import com.kindred.api.profile.RelationshipStyle
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotNull
@@ -15,8 +17,13 @@ data class UpdatePreferencesRequest(
     val ageMin: Int = 18,
     @field:Min(18) @field:Max(120)
     val ageMax: Int = 99,
+    /** "Show me" — empty/omitted means everyone; enforced mutually in discovery. */
+    @field:Size(max = 3)
+    val genders: List<Gender>? = null,
     @field:Size(max = 10)
     val lookingFor: List<String>? = null,
+    @field:Size(max = 4)
+    val relationshipStyles: List<RelationshipStyle>? = null,
     @field:Size(max = 20)
     val dealbreakers: List<String>? = null,
     val weights: Map<String, Double>? = null,
@@ -26,7 +33,9 @@ data class PreferencesResponse(
     val distanceKm: Int,
     val ageMin: Int,
     val ageMax: Int,
+    val genders: List<Gender>,
     val lookingFor: List<String>,
+    val relationshipStyles: List<RelationshipStyle>,
     val dealbreakers: List<String>,
     val weights: DiscoveryScoring.Weights,
 ) {
@@ -35,7 +44,9 @@ data class PreferencesResponse(
             distanceKm = p.distanceKm,
             ageMin = p.ageMin,
             ageMax = p.ageMax,
+            genders = p.genders ?: emptyList(),
             lookingFor = p.lookingFor ?: emptyList(),
+            relationshipStyles = p.relationshipStyles ?: emptyList(),
             dealbreakers = p.dealbreakers ?: emptyList(),
             weights = DiscoveryScoring.Weights.from(p.weights),
         )
@@ -56,7 +67,9 @@ data class DiscoveryCard(
     val displayName: String,
     val age: Int,
     val bio: String?,
+    val gender: Gender?,
     val lookingFor: List<String>,
+    val relationshipStyles: List<RelationshipStyle>,
     val interests: List<String>,
     val photo: PhotoSummary?,
     /** null when either side hides or hasn't set location */

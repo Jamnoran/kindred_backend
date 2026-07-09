@@ -35,8 +35,12 @@ class DiscoveryService(
         val weights = DiscoveryScoring.Weights.from(prefs.weights)
         val viewerAge = userAges.ageOf(viewerId)
         val viewerInterests = viewerProfile.interests.map { it.slug }.toSet()
+        val viewerGender = viewerProfile.gender
         val viewerLookingFor = (viewerProfile.lookingFor ?: emptyList()).toSet()
+        val viewerStyles = (viewerProfile.relationshipStyles ?: emptyList()).toSet()
+        val genderPrefs = (prefs.genders ?: emptyList()).toSet()
         val prefsLookingFor = (prefs.lookingFor ?: emptyList()).toSet()
+        val prefsStyles = (prefs.relationshipStyles ?: emptyList()).toSet()
         val dealbreakers = (prefs.dealbreakers ?: emptyList()).toSet()
 
         val rows = candidates.findCandidates(viewerId, prefs.ageMin, prefs.ageMax, prefs.distanceKm * 1000.0)
@@ -51,17 +55,32 @@ class DiscoveryService(
 
         return rows.mapNotNull { row ->
             val profile = profilesById[row.userId] ?: return@mapNotNull null
+            val cPrefs = candidatePrefs[row.userId]
             val candidateInterests = profile.interests.map { it.slug }.toSet()
             // hard filters the SQL can't see (JSON columns)
             if (dealbreakers.isNotEmpty() && candidateInterests.any { it in dealbreakers }) return@mapNotNull null
+            // Gender is the one MUTUAL hard filter: you never appear to someone your
+            // "show me" excludes, and vice versa. A set filter also excludes profiles
+            // with no gender declared (null is never in a non-empty set).
+            if (genderPrefs.isNotEmpty() && profile.gender !in genderPrefs) return@mapNotNull null
+            val candidateGenderPrefs = (cPrefs?.genders ?: emptyList()).toSet()
+            if (candidateGenderPrefs.isNotEmpty() && viewerGender !in candidateGenderPrefs) return@mapNotNull null
             val candidateLookingFor = (profile.lookingFor ?: emptyList()).toSet()
             if (prefsLookingFor.isNotEmpty() && candidateLookingFor.isNotEmpty() &&
                 prefsLookingFor.intersect(candidateLookingFor).isEmpty()
             ) {
                 return@mapNotNull null
             }
+            // Relationship styles behave like looking_for: only filters candidates
+            // who declared styles (profiles are stored umbrella-normalized, so a
+            // `non_monogamy` filter matches open/poly declarations too).
+            val candidateStyles = (profile.relationshipStyles ?: emptyList()).toSet()
+            if (prefsStyles.isNotEmpty() && candidateStyles.isNotEmpty() &&
+                prefsStyles.intersect(candidateStyles).isEmpty()
+            ) {
+                return@mapNotNull null
+            }
 
-            val cPrefs = candidatePrefs[row.userId]
             val factors = DiscoveryScoring.score(
                 viewerInterests = viewerInterests,
                 candidateInterests = candidateInterests,
@@ -74,6 +93,8 @@ class DiscoveryService(
                 candidateAgeMax = cPrefs?.ageMax,
                 viewerLookingFor = viewerLookingFor,
                 candidateLookingFor = candidateLookingFor,
+                viewerStyles = viewerStyles,
+                candidateStyles = candidateStyles,
                 weights = weights,
             )
             DiscoveryCard(
@@ -81,7 +102,9 @@ class DiscoveryService(
                 displayName = profile.displayName,
                 age = row.age,
                 bio = profile.bio,
+                gender = profile.gender,
                 lookingFor = candidateLookingFor.sorted(),
+                relationshipStyles = candidateStyles.sorted(),
                 interests = candidateInterests.sorted(),
                 photo = PhotoSummary.from(primaryPhotos[row.userId], publicBaseUrl),
                 distanceKm = displayDistanceKm(profile, factors.distanceKm),

@@ -1,5 +1,7 @@
 package com.kindred.api.discovery
 
+import com.kindred.api.profile.Gender
+import com.kindred.api.profile.RelationshipStyle
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
@@ -28,9 +30,25 @@ class Preferences(
     @Column(name = "age_max", nullable = false)
     var ageMax: Int = 99,
 
+    /**
+     * "Show me" genders; empty/NULL = everyone. Enforced MUTUALLY in discovery:
+     * neither side sees the other unless both filters accept (a set filter also
+     * hides profiles with no gender declared, in both directions).
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    var genders: List<Gender>? = null,
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "looking_for")
     var lookingFor: List<String>? = null,
+
+    /**
+     * Candidate must declare at least one of these styles (candidates who declared
+     * nothing still pass, like looking_for). Stored verbatim — no umbrella expansion.
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "relationship_styles")
+    var relationshipStyles: List<RelationshipStyle>? = null,
 
     /** Interest slugs the candidate must NOT have — enforced as a hard filter. */
     @JdbcTypeCode(SqlTypes.JSON)

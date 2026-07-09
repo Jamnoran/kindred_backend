@@ -44,6 +44,7 @@ class ProfileServiceTest {
             UpdateProfileRequest(
                 displayName = "Alice",
                 bio = "hello",
+                gender = Gender.nonbinary,
                 lookingFor = listOf("Friends ", "dating"),
                 interests = listOf("Hiking", "coffee"),
             ),
@@ -51,14 +52,39 @@ class ProfileServiceTest {
 
         assertEquals("Alice", profile.displayName)
         assertEquals("hello", profile.bio)
+        assertEquals(Gender.nonbinary, profile.gender)
         assertEquals(listOf("friends", "dating"), profile.lookingFor)
         assertEquals(setOf("hiking", "coffee"), profile.interests.map { it.slug }.toSet())
         assertEquals(now, profile.lastActiveAt)
     }
 
     @Test
+    fun `upsert expands the non-monogamy umbrella on relationship styles`() {
+        whenever(profiles.findWithInterestsByUserId(1L)).thenReturn(null)
+        whenever(profiles.save(any())).thenAnswer { it.arguments[0] }
+
+        val poly = service.upsert(
+            1L,
+            UpdateProfileRequest(displayName = "Alice", relationshipStyles = listOf(RelationshipStyle.polyamory)),
+        )
+        assertEquals(listOf(RelationshipStyle.polyamory, RelationshipStyle.non_monogamy), poly.relationshipStyles)
+
+        val mono = service.upsert(
+            1L,
+            UpdateProfileRequest(displayName = "Alice", relationshipStyles = listOf(RelationshipStyle.monogamy)),
+        )
+        assertEquals(listOf(RelationshipStyle.monogamy), mono.relationshipStyles)
+    }
+
+    @Test
     fun `upsert has PUT semantics - omitted fields are cleared`() {
-        val existing = Profile(userId = 1L, displayName = "Old", interests = mutableSetOf(hiking))
+        val existing = Profile(
+            userId = 1L,
+            displayName = "Old",
+            gender = Gender.woman,
+            relationshipStyles = listOf(RelationshipStyle.monogamy),
+            interests = mutableSetOf(hiking),
+        )
         whenever(profiles.findWithInterestsByUserId(1L)).thenReturn(existing)
         whenever(profiles.save(any())).thenAnswer { it.arguments[0] }
 
@@ -66,6 +92,8 @@ class ProfileServiceTest {
 
         assertEquals("New", profile.displayName)
         assertNull(profile.bio) // blank bio normalized to null
+        assertNull(profile.gender)
+        assertNull(profile.relationshipStyles)
         assertEquals(emptySet(), profile.interests.map { it.slug }.toSet())
         verify(interests, never()).findBySlugIn(any())
     }
