@@ -2,6 +2,7 @@ package com.kindred.api.chat
 
 import com.kindred.api.discovery.Match
 import com.kindred.api.discovery.MatchRepository
+import com.kindred.api.notification.NotificationService
 import com.kindred.api.photo.InvalidStorageKeyException
 import com.kindred.api.photo.ModerationStatus
 import com.kindred.api.photo.PhotoRepository
@@ -36,6 +37,7 @@ class ChatServiceTest {
     private val photos: PhotoRepository = mock()
     private val chatMedia: ChatMediaRepository = mock()
     private val premium: PremiumService = mock()
+    private val notifications: NotificationService = mock()
     private val jobs: JobRequestScheduler = mock()
     private val relayInstance: ChatEventRelay = mock()
     private val relay: org.springframework.beans.factory.ObjectProvider<ChatEventRelay> = mock {
@@ -47,7 +49,7 @@ class ChatServiceTest {
     }
     private val now = Instant.parse("2026-07-02T12:00:00Z")
     private val service = ChatService(
-        conversations, messages, matches, profiles, photos, chatMedia, premium, jobs,
+        conversations, messages, matches, profiles, photos, chatMedia, premium, notifications, jobs,
         Clock.fixed(now, ZoneOffset.UTC), relay, presence, "http://cdn.test",
     )
 
@@ -74,6 +76,15 @@ class ChatServiceTest {
         assertEquals(1L, sent.senderId)
         assertEquals(now, sent.createdAt)
         verify(relayInstance).publish(ChatEvent(type = "message", conversationId = 7L, message = sent))
+        verify(notifications).messageSent(senderId = 1L, recipientId = 2L, conversationId = 7L)
+    }
+
+    @Test
+    fun `failed sends never enqueue an offline notification`() {
+        stubConversation()
+
+        assertThrows<EmptyMessageException> { service.send(1L, 7L, "   ") }
+        verify(notifications, never()).messageSent(any(), any(), any())
     }
 
     @Test
@@ -228,7 +239,7 @@ class ChatServiceTest {
             on { ifAvailable } doReturn null
         }
         val svc = ChatService(
-            conversations, messages, matches, profiles, photos, chatMedia, premium, jobs,
+            conversations, messages, matches, profiles, photos, chatMedia, premium, notifications, jobs,
             Clock.fixed(now, ZoneOffset.UTC), relay, offlinePresence, "http://cdn.test",
         )
         val match = Match(id = 3L, userA = 1L, userB = 2L, createdAt = now)

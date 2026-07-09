@@ -2,6 +2,7 @@ package com.kindred.api.discovery
 
 import com.kindred.api.chat.Conversation
 import com.kindred.api.chat.ConversationRepository
+import com.kindred.api.notification.NotificationService
 import com.kindred.api.photo.ModerationStatus
 import com.kindred.api.photo.Photo
 import com.kindred.api.photo.PhotoRepository
@@ -20,6 +21,7 @@ class LikeService(
     private val conversations: ConversationRepository,
     private val profiles: ProfileRepository,
     private val photos: PhotoRepository,
+    private val notifications: NotificationService,
     private val clock: Clock,
     @param:Value("\${kindred.media.public-base-url}") private val publicBaseUrl: String,
 ) {
@@ -46,6 +48,7 @@ class LikeService(
 
         val match = matches.save(Match(userA = a, userB = b, createdAt = clock.instant()))
         val conversation = conversations.save(Conversation(matchId = requireNotNull(match.id), createdAt = clock.instant()))
+        notifications.matchCreated(reactorId = userId, match = match, conversationId = requireNotNull(conversation.id))
         return ReactResponse(matched = true, matchId = match.id, conversationId = conversation.id)
     }
 

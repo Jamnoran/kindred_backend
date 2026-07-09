@@ -70,10 +70,47 @@ Legend: `[ ]` todo · `[x]` done · `[~]` in progress / partially done
 - [x] Stripe Checkout integration (one-off payment + signature-verified webhook → `grant`; docs/STRIPE_SETUP.md)
 - [ ] Compose smoke test of a real test-mode purchase (`stripe listen` + 4242 card)
 
+## Notifications — offline match/message alerts
+
+- [x] Channel abstraction (`notification/`): `NotificationChannel` beans fanned out per user prefs
+- [x] Email channel (logging mailer stub — real SMTP is the same launch blocker as VerificationMailer)
+- [x] Per-user preferences (type × channel grid, default on) + `GET/PUT /notification-preferences`
+- [x] Async dispatch via JobRunr with at-dispatch re-checks (offline, unread, 15-min per-conversation throttle)
+- [ ] Real SMTP mailer (shared with email verification)
+- [ ] More channels (web push?) as product wants them
+
 ---
 
 ## Work log
 
+- **2026-07-09** — Offline notifications (`notification/` package): users who are
+  **not online** (no live WS session per PresenceService) get notified about new
+  matches and new messages. Pluggable by design: `NotificationChannel` is a Spring
+  bean interface (`channelType` + `send`), `NotificationService.dispatch` fans out
+  to every bean whose channel the recipient has enabled — adding push/sms later =
+  one new bean + one enum entry, no dispatch changes. First channel is **email**
+  via `NotificationMailer` (logging stub, same launch-blocker deal as
+  VerificationMailer; emails name the other person + deep-link
+  `{web-base-url}/conversations/{id}` but deliberately **never carry message
+  content**). Producers: `LikeService.react` (mutual like → notify the participant
+  who *didn't* just react) and `ChatService.send` (notify the recipient). Both just
+  enqueue a JobRunr `SendNotificationRequest`; the worker re-checks everything at
+  dispatch time — recipient still offline, message still unread, recipient not
+  deleted — so a user who opens the site (or reads) in between gets no email.
+  Message notifications are additionally throttled to one per
+  recipient+conversation per 15 min (`NotificationThrottle`, Redis key with TTL,
+  `kindred.notifications.message-throttle`; marked *after* a successful send so
+  JobRunr retries aren't swallowed; `@Profile("!openapi")` + ObjectProvider like
+  PresenceService). Preferences: V7 `notification_preferences` (one row per
+  user/type/channel, missing row = enabled), `GET /notification-preferences`
+  returns the full type×channel grid with defaults filled in, `PUT` is a full
+  replace (missing combos reset to enabled, duplicate pair → 400). Verified: unit
+  tests for dispatch gating (online/read/throttle/opt-out/deleted/absent-presence),
+  prefs matrix + replace semantics, email copy, producers' enqueue calls, MockMvc
+  slice for the endpoints (401, grid, replace, 400s); spec regenerated;
+  CLIENT_INTEGRATION.md §8 added. Open: real SMTP (shared with verification
+  emails), V7 only exercised against H2-less unit tests — needs the compose
+  smoke, and no digest/batching beyond the 15-min throttle.
 - **2026-07-05** — Stripe Checkout for the premium purchase (`premium/Stripe*`,
   stripe-java 33.1.0): `POST /premium/checkout` (409 if already premium) creates
   a one-off-payment Checkout Session — our user id rides along as

@@ -51,7 +51,7 @@ async function api(path, { method = "GET", body } = {}) {
     },
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (!res.ok) throw await res.json(); // RFC 7807 problem detail — see §9
+  if (!res.ok) throw await res.json(); // RFC 7807 problem detail — see §10
   return res.status === 204 ? null : res.json();
 }
 ```
@@ -273,14 +273,36 @@ counts + `GET .../messages` for anything newer than your last seen id), then rel
 on the socket for updates. Never treat the socket as the source of truth for
 history. Sending messages goes through REST (§6), not the socket.
 
-## 8. Not implemented yet (don't build against these)
+## 8. Offline notifications & preferences
+
+When a user is **not connected over WebSocket** (per presence, §7), the backend
+notifies them out-of-band about new matches and new messages — email today, more
+channels (push, …) later. This is fully server-side; clients only need the
+preferences UI:
+
+- `GET /api/v1/notification-preferences` → `{ preferences: [{ type, channel,
+  enabled }] }` — always the **complete type × channel grid** with defaults
+  filled in. Types: `new_match`, `new_message`; channels: `email` (more will
+  appear — render whatever the grid contains rather than hardcoding).
+- `PUT /api/v1/notification-preferences` with the same shape — **full replace**:
+  any type/channel pair missing from the body resets to its default (enabled).
+  Repeating a pair → 400. Returns the updated grid.
+
+Semantics worth knowing (for support/UX copy): everything defaults to **on**;
+message notifications are skipped if the recipient reads the conversation first
+and are throttled to at most one per conversation per 15 minutes; emails name
+the sender but **never include message content**. Notification emails deep-link
+to `{web-base-url}/conversations/{conversationId}` — the web app must route
+that path.
+
+## 9. Not implemented yet (don't build against these)
 
 Report/block, rate limiting, and GDPR export are pending backend phases
 (Phase 4+). The `type` field on `ChatEvent` is open-ended — **ignore unknown
 event types** instead of erroring, so new event kinds can ship without breaking
 older clients.
 
-## 9. Errors
+## 10. Errors
 
 Errors are RFC 7807 problem details (`application/problem+json`):
 

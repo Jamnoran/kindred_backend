@@ -74,3 +74,6 @@ kindred:
     # where Stripe sends the browser after payment / cancel (web app routes)
     success-url: ${STRIPE_SUCCESS_URL:http://localhost:3000/premium/success}
     cancel-url: ${STRIPE_CANCEL_URL:http://localhost:3000/premium/cancelled}
+  notifications:
+    # cooldown per recipient+conversation between "new message" offline notifications
+    message-throttle: ${NOTIFICATIONS_MESSAGE_THROTTLE:15m}
