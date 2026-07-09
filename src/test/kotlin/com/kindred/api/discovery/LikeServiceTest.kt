@@ -2,11 +2,13 @@ package com.kindred.api.discovery
 
 import com.kindred.api.chat.Conversation
 import com.kindred.api.chat.ConversationRepository
+import com.kindred.api.notification.NotificationService
 import com.kindred.api.photo.PhotoRepository
 import com.kindred.api.profile.ProfileRepository
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.kotlin.any
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
@@ -25,8 +27,9 @@ class LikeServiceTest {
     private val conversations: ConversationRepository = mock()
     private val profiles: ProfileRepository = mock()
     private val photos: PhotoRepository = mock()
+    private val notifications: NotificationService = mock()
     private val clock = Clock.fixed(Instant.parse("2026-07-02T12:00:00Z"), ZoneOffset.UTC)
-    private val service = LikeService(likes, matches, conversations, profiles, photos, clock, "http://cdn.test")
+    private val service = LikeService(likes, matches, conversations, profiles, photos, notifications, clock, "http://cdn.test")
 
     @Test
     fun `a one-sided like does not match`() {
@@ -39,6 +42,7 @@ class LikeServiceTest {
 
         assertFalse(result.matched)
         verify(matches, never()).save(any())
+        verify(notifications, never()).matchCreated(any(), any(), any())
     }
 
     @Test
@@ -58,6 +62,8 @@ class LikeServiceTest {
         assertTrue(result.matched)
         assertEquals(9L, result.matchId)
         assertEquals(5L, result.conversationId)
+        // the reactor (user 2) saw the match in the response; user 1 gets the offline notification
+        verify(notifications).matchCreated(eq(2L), any(), eq(5L))
     }
 
     @Test

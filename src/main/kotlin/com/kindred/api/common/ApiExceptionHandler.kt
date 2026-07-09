@@ -12,6 +12,7 @@ import com.kindred.api.discovery.AlreadyReactedException
 import com.kindred.api.discovery.CannotReactToSelfException
 import com.kindred.api.discovery.ReactionTargetNotFoundException
 import com.kindred.api.media.UnsupportedImageTypeException
+import com.kindred.api.notification.DuplicateNotificationPreferenceException
 import com.kindred.api.photo.InvalidStorageKeyException
 import com.kindred.api.photo.PhotoLimitReachedException
 import com.kindred.api.photo.PhotoNotFoundException
@@ -84,6 +85,10 @@ class ApiExceptionHandler {
 
     @ExceptionHandler(InvalidStripeWebhookException::class)
     fun invalidStripeWebhook(e: InvalidStripeWebhookException) = problem(HttpStatus.BAD_REQUEST, e.message)
+
+    @ExceptionHandler(DuplicateNotificationPreferenceException::class)
+    fun duplicateNotificationPreference(e: DuplicateNotificationPreferenceException) =
+        problem(HttpStatus.BAD_REQUEST, e.message)
 
     @ExceptionHandler(InvalidStorageKeyException::class)
     fun invalidStorageKey(e: InvalidStorageKeyException) = problem(HttpStatus.BAD_REQUEST, e.message)

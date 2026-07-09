@@ -3,6 +3,7 @@ package com.kindred.api.chat
 import com.kindred.api.discovery.Match
 import com.kindred.api.discovery.MatchRepository
 import com.kindred.api.discovery.PhotoSummary
+import com.kindred.api.notification.NotificationService
 import com.kindred.api.photo.InvalidStorageKeyException
 import com.kindred.api.premium.PremiumRequiredException
 import com.kindred.api.premium.PremiumService
@@ -27,6 +28,7 @@ class ChatService(
     private val photos: PhotoRepository,
     private val chatMedia: ChatMediaRepository,
     private val premium: PremiumService,
+    private val notifications: NotificationService,
     private val jobs: JobRequestScheduler,
     private val clock: Clock,
     // absent when Redis is (openapi spec-export boot, slice tests) — broadcast no-ops
@@ -102,6 +104,7 @@ class ChatService(
         media?.let { jobs.enqueue(ProcessChatMediaRequest(requireNotNull(it.id))) }
         val response = MessageResponse.from(message, media)
         broadcast(ChatEvent(type = "message", conversationId = conversationId, message = response))
+        notifications.messageSent(senderId = userId, recipientId = match.otherThan(userId), conversationId = conversationId)
         return response
     }
 
