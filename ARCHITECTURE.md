@@ -138,12 +138,16 @@ Core tables (not exhaustive, enough to start). InnoDB, foreign keys enforced.
 
 - **users** — id, email (unique), password_hash, email_verified, dob (18+ gate),
   created_at, deleted_at (soft delete for GDPR flows).
-- **profiles** — user_id FK, display_name, bio, looking_for (JSON), `location POINT SRID 4326`
-  with a **SPATIAL INDEX**, location_visibility, last_active_at.
+- **profiles** — user_id FK, display_name, bio, gender (optional, self-identified:
+  `woman|man|nonbinary`; orientation is never stored as a label — it's the `genders`
+  preference filter), looking_for (JSON), relationship_styles (JSON, fixed vocab
+  `monogamy|non_monogamy|open|polyamory` — ENM/poly are first-class), `location POINT
+  SRID 4326` with a **SPATIAL INDEX**, location_visibility, last_active_at.
 - **photos** — id, profile_id FK, storage_key, sort_order, moderation_status
   (`pending|approved|rejected`), is_primary, blurhash.
 - **interests / profile_interests** — tag taxonomy + join table (drives transparent matching).
-- **preferences** — user_id FK, distance_km, age_min/max, looking_for, dealbreakers (JSON),
+- **preferences** — user_id FK, distance_km, age_min/max, genders ("show me" — the one
+  mutually enforced filter, §7), looking_for, relationship_styles, dealbreakers (JSON),
   plus the user's own matching weights if you let people tune ranking (§7).
 - **likes** — from_user FK, to_user FK, kind (`like|superlike|pass`), created_at,
   unique(from_user,to_user). "Who liked you" is just a query — **no paywall**.
@@ -220,8 +224,11 @@ score(viewer, candidate) =
 ```
 
 Design rules:
-- **Hard filters are user-controlled and visible** (distance, age, looking_for,
-  dealbreakers). Candidates outside filters never appear.
+- **Hard filters are user-controlled and visible** (distance, age, genders, looking_for,
+  relationship_styles, dealbreakers). Candidates outside filters never appear. The
+  `genders` filter is enforced **mutually** — you never appear to someone whose
+  "show me" excludes you, and vice versa — so queer users' feeds only contain
+  people who could actually match.
 - **"Why this person?"** panel shows the actual contributing factors ("3 shared interests ·
   4 km away · active today · matches what you're both looking for").
 - **Let users tune their own weights** (sliders). Their ranking, their rules.

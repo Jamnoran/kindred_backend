@@ -35,7 +35,9 @@ class ProfileControllerTest {
         userId = 1L,
         displayName = "Alice",
         bio = "hello",
+        gender = Gender.nonbinary,
         lookingFor = listOf("dating"),
+        relationshipStyles = listOf(RelationshipStyle.polyamory, RelationshipStyle.non_monogamy),
         interests = mutableSetOf(Interest(id = 1L, slug = "hiking", label = "Hiking")),
     )
 
@@ -54,6 +56,9 @@ class ProfileControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.userId").value(1))
             .andExpect(jsonPath("$.displayName").value("Alice"))
+            .andExpect(jsonPath("$.gender").value("nonbinary"))
+            .andExpect(jsonPath("$.relationshipStyles[0]").value("polyamory"))
+            .andExpect(jsonPath("$.relationshipStyles[1]").value("non_monogamy"))
             .andExpect(jsonPath("$.interests[0].slug").value("hiking"))
             .andExpect(jsonPath("$.locationSet").value(false))
     }
@@ -73,10 +78,31 @@ class ProfileControllerTest {
         mockMvc.perform(
             put("/api/v1/profile").with(user(alice)).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"displayName":"Alice","bio":"hello","lookingFor":["dating"],"interests":["hiking"]}"""),
+                .content(
+                    """{"displayName":"Alice","bio":"hello","gender":"nonbinary",
+                       "lookingFor":["dating"],"relationshipStyles":["polyamory"],"interests":["hiking"]}""",
+                ),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.displayName").value("Alice"))
+            .andExpect(jsonPath("$.gender").value("nonbinary"))
+    }
+
+    @Test
+    fun `put profile rejects unknown gender and relationship-style values`() {
+        mockMvc.perform(
+            put("/api/v1/profile").with(user(alice)).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"displayName":"Alice","gender":"not-a-valid-value"}"""),
+        )
+            .andExpect(status().isBadRequest)
+
+        mockMvc.perform(
+            put("/api/v1/profile").with(user(alice)).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"displayName":"Alice","relationshipStyles":["situationship"]}"""),
+        )
+            .andExpect(status().isBadRequest)
     }
 
     @Test

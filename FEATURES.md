@@ -33,6 +33,8 @@ Legend: `[ ]` todo · `[x]` done · `[~]` in progress / partially done
 ## Phase 2 — Discovery + transparent matching
 
 - [x] User-controlled hard filters (distance / age / looking_for / dealbreakers)
+- [x] Inclusivity: optional self-identified gender + mutual "show me" filter; relationship
+      styles (monogamy / ENM umbrella / open / polyamory) on profiles + preferences
 - [x] Explainable scoring function (§7) with `ST_Distance_Sphere` proximity
 - [x] Per-user weight tuning (persisted in `preferences.weights`)
 - [x] "Why this person?" factors in the discovery response
@@ -83,6 +85,27 @@ Legend: `[ ]` todo · `[x]` done · `[~]` in progress / partially done
 
 ## Work log
 
+- **2026-07-09** — LGBTQ+ / non-monogamy support (V8 migration, `profile/` +
+  `discovery/`): the platform was gender-blind (no gender/orientation fields at
+  all — nothing excluded queer users, but a gay man couldn't say "show me men").
+  Added optional self-identified `profiles.gender` (`woman|man|nonbinary`, null =
+  prefer not to say; deliberately no separate trans categories, and orientation is
+  never stored as a label) plus `preferences.genders` ("show me", multi-select →
+  bi/pan is just picking several). Gender is the one **mutually enforced** hard
+  filter in DiscoveryService: both sides' filters must accept, and a set filter
+  hides undeclared-gender profiles in both directions. Non-monogamy:
+  `relationship_styles` JSON on profiles + preferences with fixed vocab
+  (`monogamy|non_monogamy|open|polyamory`); profile writes are umbrella-normalized
+  (open/poly ⇒ + non_monogamy) while preference filters stay verbatim, so
+  filtering `non_monogamy` finds all ENM but `polyamory` stays specific. Filter
+  semantics mirror looking_for (undeclared candidates pass); style overlap also
+  feeds the mutualFit factor (now age+lookingFor+style ÷ 3). Nothing structural
+  ever blocked multiple partners (unlimited concurrent matches/chats). Verified:
+  full suite green (new DiscoveryServiceTest for the mutual/JSON filters,
+  PreferencesServiceTest, scoring/profile test updates); OpenAPI regenerated
+  (enums land in the spec for the web client). Open: migration only exercised on
+  H2-less unit path — needs the usual `docker compose up` MySQL smoke; frontend
+  onboarding/filters UI; README/§10-style public copy about inclusivity.
 - **2026-07-09** — Offline notifications (`notification/` package): users who are
   **not online** (no live WS session per PresenceService) get notified about new
   matches and new messages. Pluggable by design: `NotificationChannel` is a Spring

@@ -75,8 +75,18 @@ session — treat any 401 as "redirect to login".
 - `GET /interests` — the fixed interest taxonomy `[{slug, label}]`. Send slugs;
   unknown slugs → 400.
 - `PUT /profile` — **full replace** (send the whole profile every time):
-  `{displayName, bio, lookingFor: ["relationship" | ...], interests: [slug...]}`.
+  `{displayName, bio, gender, lookingFor: ["relationship" | ...],
+  relationshipStyles: [...], interests: [slug...]}`.
   `GET /profile` reads it back.
+  - `gender` is optional and self-identified: `woman | man | nonbinary` (omit/null =
+    prefer not to say). There are deliberately no separate trans categories — trans
+    women select `woman`, etc. Orientation is never a profile label; it's expressed
+    via the `genders` preference filter (§5).
+  - `relationshipStyles` is multi-select from `monogamy | non_monogamy | open |
+    polyamory` (`non_monogamy` = the ethical-non-monogamy umbrella). The server
+    auto-adds `non_monogamy` when `open` or `polyamory` is chosen, so a
+    "non-monogamy" filter finds everyone ENM. Selecting both `monogamy` and
+    `non_monogamy` reads as "open to either". Unknown values → 400.
 - `PUT /profile/location` — `{lat, lng, visibility}` where visibility is
   `hidden | approximate | precise`. `approximate` rounds displayed distances to
   5 km steps for others; `hidden` excludes the user from nearby/distance features.
@@ -103,15 +113,25 @@ pending photos. `DELETE /photos/{id}` removes one (re-sorts, re-picks primary).
 ## 5. Discovery, preferences, likes, matches
 
 - `GET /discovery?limit=20` → `DiscoveryCard[]`:
-  `{userId, displayName, age, bio, lookingFor, interests, photo, distanceKm, score, whyThisPerson}`.
+  `{userId, displayName, age, bio, gender, lookingFor, relationshipStyles,
+  interests, photo, distanceKm, score, whyThisPerson}`.
   `whyThisPerson` is the transparent per-factor score breakdown (shared interests,
   proximity, recency, mutual fit + the user's own weights). **Show it** — it's a
   core product principle, not debug data. `distanceKm` is null when either side
   hides location.
 - `GET /preferences` / `PUT /preferences` — hard filters
-  (`distanceKm`, `ageMin`/`ageMax`, `lookingFor`, `dealbreakers`) and the scoring
-  `weights` map (values 0–5). The PUT is a full replace with server defaults for
-  omitted fields, so read-modify-write.
+  (`distanceKm`, `ageMin`/`ageMax`, `genders`, `lookingFor`, `relationshipStyles`,
+  `dealbreakers`) and the scoring `weights` map (values 0–5). The PUT is a full
+  replace with server defaults for omitted fields, so read-modify-write.
+  - `genders` ("show me") is a multi-select of `woman | man | nonbinary`;
+    empty/omitted = everyone. It is the one **mutually enforced** filter: you never
+    see someone whose own `genders` filter excludes you, and vice versa. Setting it
+    also hides profiles with no declared gender (in both directions) — surface that
+    in the UI so users understand why declaring a gender helps them.
+  - `relationshipStyles` keeps its literal meaning as a filter: `polyamory` shows
+    specifically-poly people, `non_monogamy` shows anyone ENM (profiles are stored
+    umbrella-expanded). Candidates who declared no styles still appear, same as
+    `lookingFor`.
 - `POST /likes` `{toUserId, kind}` with kind `like | superlike | pass` →
   `{matched, matchId, conversationId}`. When `matched` is true, **the conversation
   already exists** — go straight to chat with `conversationId` ("It's a match!"

@@ -1,5 +1,6 @@
 package com.kindred.api.discovery
 
+import com.kindred.api.profile.RelationshipStyle
 import java.time.Duration
 import java.time.Instant
 import kotlin.math.roundToInt
@@ -52,6 +53,8 @@ object DiscoveryScoring {
         candidateAgeMax: Int?,
         viewerLookingFor: Set<String>,
         candidateLookingFor: Set<String>,
+        viewerStyles: Set<RelationshipStyle> = emptySet(),
+        candidateStyles: Set<RelationshipStyle> = emptySet(),
         weights: Weights,
     ): Factors {
         val shared = viewerInterests.intersect(candidateInterests).sorted()
@@ -74,14 +77,18 @@ object DiscoveryScoring {
         }
 
         // Does the viewer fit what the candidate says they want, and do their
-        // looking_for declarations overlap? Unknown → neutral 0.5, never a penalty.
+        // looking_for / relationship-style declarations overlap? Unknown → neutral
+        // 0.5, never a penalty.
         val ageFit = if (candidateAgeMin == null || candidateAgeMax == null) {
             0.5
         } else if (viewerAge in candidateAgeMin..candidateAgeMax) 1.0 else 0.0
         val lookingForFit = if (viewerLookingFor.isEmpty() || candidateLookingFor.isEmpty()) {
             0.5
         } else if (viewerLookingFor.intersect(candidateLookingFor).isNotEmpty()) 1.0 else 0.0
-        val mutualFitScore = (ageFit + lookingForFit) / 2
+        val styleFit = if (viewerStyles.isEmpty() || candidateStyles.isEmpty()) {
+            0.5
+        } else if (viewerStyles.intersect(candidateStyles).isNotEmpty()) 1.0 else 0.0
+        val mutualFitScore = ((ageFit + lookingForFit + styleFit) / 3).round3()
 
         val weightSum = weights.interests + weights.distance + weights.activity + weights.mutualFit
         val total = if (weightSum == 0.0) {

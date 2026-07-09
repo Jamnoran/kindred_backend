@@ -12,8 +12,11 @@ data class UpdateProfileRequest(
     val displayName: String,
     @field:Size(max = 2000)
     val bio: String? = null,
+    val gender: Gender? = null,
     @field:Size(max = 10)
     val lookingFor: List<@NotBlank @Size(max = 64) String>? = null,
+    @field:Size(max = 4)
+    val relationshipStyles: List<RelationshipStyle>? = null,
     @field:Size(max = 20)
     val interests: List<@NotBlank @Size(max = 64) String>? = null,
 )
@@ -36,7 +39,9 @@ data class ProfileResponse(
     val userId: Long,
     val displayName: String,
     val bio: String?,
+    val gender: Gender?,
     val lookingFor: List<String>,
+    val relationshipStyles: List<RelationshipStyle>,
     val interests: List<InterestResponse>,
     val locationSet: Boolean,
     val locationVisibility: LocationVisibility,
@@ -47,7 +52,9 @@ data class ProfileResponse(
             userId = profile.userId,
             displayName = profile.displayName,
             bio = profile.bio,
+            gender = profile.gender,
             lookingFor = profile.lookingFor ?: emptyList(),
+            relationshipStyles = profile.relationshipStyles ?: emptyList(),
             interests = profile.interests.map(InterestResponse::from).sortedBy { it.slug },
             locationSet = profile.locationSet,
             locationVisibility = profile.locationVisibility,

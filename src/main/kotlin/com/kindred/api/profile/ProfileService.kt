@@ -23,7 +23,9 @@ class ProfileService(
             ?: Profile(userId = userId, displayName = req.displayName)
         profile.displayName = req.displayName
         profile.bio = req.bio?.takeIf { it.isNotBlank() }
+        profile.gender = req.gender
         profile.lookingFor = req.lookingFor?.map { it.trim().lowercase() }?.distinct()
+        profile.relationshipStyles = req.relationshipStyles?.let(RelationshipStyle::withUmbrella)
         profile.interests = resolvedInterests
         profile.lastActiveAt = clock.instant()
         return profiles.save(profile)
