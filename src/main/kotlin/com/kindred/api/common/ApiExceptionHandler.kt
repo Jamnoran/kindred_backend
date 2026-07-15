@@ -1,5 +1,6 @@
 package com.kindred.api.common
 
+import com.kindred.api.auth.AccountBannedException
 import com.kindred.api.auth.EmailAlreadyRegisteredException
 import com.kindred.api.auth.EmailNotVerifiedException
 import com.kindred.api.auth.InvalidVerificationTokenException
@@ -12,6 +13,16 @@ import com.kindred.api.discovery.AlreadyReactedException
 import com.kindred.api.discovery.CannotReactToSelfException
 import com.kindred.api.discovery.ReactionTargetNotFoundException
 import com.kindred.api.media.UnsupportedImageTypeException
+import com.kindred.api.moderation.AdminAccessDeniedException
+import com.kindred.api.moderation.CannotModerateAdminException
+import com.kindred.api.moderation.CannotReportSelfException
+import com.kindred.api.moderation.DuplicateReportException
+import com.kindred.api.moderation.ModerationTargetNotFoundException
+import com.kindred.api.moderation.ReportNotFoundException
+import com.kindred.api.moderation.ReportNotOpenException
+import com.kindred.api.moderation.ReportTargetNotFoundException
+import com.kindred.api.moderation.UserAlreadyBannedException
+import com.kindred.api.moderation.UserNotBannedException
 import com.kindred.api.notification.DuplicateNotificationPreferenceException
 import com.kindred.api.photo.InvalidStorageKeyException
 import com.kindred.api.photo.PhotoLimitReachedException
@@ -46,6 +57,9 @@ class ApiExceptionHandler {
 
     @ExceptionHandler(EmailNotVerifiedException::class)
     fun emailNotVerified(e: EmailNotVerifiedException) = problem(HttpStatus.FORBIDDEN, e.message)
+
+    @ExceptionHandler(AccountBannedException::class)
+    fun accountBanned(e: AccountBannedException) = problem(HttpStatus.FORBIDDEN, e.message)
 
     @ExceptionHandler(ProfileNotFoundException::class)
     fun profileNotFound(e: ProfileNotFoundException) = problem(HttpStatus.NOT_FOUND, e.message)
@@ -102,6 +116,36 @@ class ApiExceptionHandler {
     @ExceptionHandler(UnsupportedImageTypeException::class)
     fun unsupportedImageType(e: UnsupportedImageTypeException) =
         problem(HttpStatus.UNSUPPORTED_MEDIA_TYPE, e.message)
+
+    @ExceptionHandler(CannotReportSelfException::class)
+    fun reportSelf(e: CannotReportSelfException) = problem(HttpStatus.UNPROCESSABLE_ENTITY, e.message)
+
+    @ExceptionHandler(ReportTargetNotFoundException::class)
+    fun reportTarget(e: ReportTargetNotFoundException) = problem(HttpStatus.NOT_FOUND, e.message)
+
+    @ExceptionHandler(DuplicateReportException::class)
+    fun duplicateReport(e: DuplicateReportException) = problem(HttpStatus.CONFLICT, e.message)
+
+    @ExceptionHandler(AdminAccessDeniedException::class)
+    fun adminAccessDenied(e: AdminAccessDeniedException) = problem(HttpStatus.FORBIDDEN, e.message)
+
+    @ExceptionHandler(ReportNotFoundException::class)
+    fun reportNotFound(e: ReportNotFoundException) = problem(HttpStatus.NOT_FOUND, e.message)
+
+    @ExceptionHandler(ReportNotOpenException::class)
+    fun reportNotOpen(e: ReportNotOpenException) = problem(HttpStatus.CONFLICT, e.message)
+
+    @ExceptionHandler(ModerationTargetNotFoundException::class)
+    fun moderationTarget(e: ModerationTargetNotFoundException) = problem(HttpStatus.NOT_FOUND, e.message)
+
+    @ExceptionHandler(CannotModerateAdminException::class)
+    fun moderateAdmin(e: CannotModerateAdminException) = problem(HttpStatus.CONFLICT, e.message)
+
+    @ExceptionHandler(UserAlreadyBannedException::class)
+    fun alreadyBanned(e: UserAlreadyBannedException) = problem(HttpStatus.CONFLICT, e.message)
+
+    @ExceptionHandler(UserNotBannedException::class)
+    fun notBanned(e: UserNotBannedException) = problem(HttpStatus.CONFLICT, e.message)
 
     // Bean-validation failures on @RequestParam / @PathVariable arguments
     @ExceptionHandler(ConstraintViolationException::class)

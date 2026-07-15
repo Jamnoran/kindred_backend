@@ -69,8 +69,16 @@ separate repo (`kindred_web`) and codegens its client from `openapi/kindred-api.
 - `ChatService.requireMembership(userId, conversationId)` is the chat authz
   primitive — call it on every read/send; it returns the `Match` (participants =
   `userA`/`userB`). Non-membership throws `ConversationNotFoundException` (404).
-- Optional beans (`ChatEventRelay`, `PresenceService`) are injected as
-  `ObjectProvider` because the `openapi` profile and slice tests boot without Redis.
+- Optional beans (`ChatEventRelay`, `PresenceService`, and the Spring Session
+  repository in `AdminService`) are injected as `ObjectProvider` because the
+  `openapi` profile and slice tests boot without Redis.
+- Spring Session runs the **indexed** Redis repository
+  (`spring.session.redis.repository-type: indexed`) so an admin ban can expire a
+  user's live sessions by principal name. The indexed repo issues `CONFIG SET`
+  for keyspace notifications at startup — managed Redis with CONFIG disabled
+  needs `notify-keyspace-events` set out-of-band.
+- Admin access is `users.is_admin`, granted via SQL only; `AdminService.requireAdmin`
+  re-reads it from the DB per request (the session principal is stale by design).
 
 ## Process / docs contract
 
