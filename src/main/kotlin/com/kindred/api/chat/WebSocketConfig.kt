@@ -1,6 +1,7 @@
 package com.kindred.api.chat
 
 import com.kindred.api.auth.KindredUserDetails
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Configuration
 import org.springframework.messaging.MessageChannel
 import org.springframework.messaging.simp.config.ChannelRegistration
@@ -37,10 +38,15 @@ data class ChatEvent(
  */
 @Configuration
 @EnableWebSocketMessageBroker
-class WebSocketConfig(private val chatService: ChatService) : WebSocketMessageBrokerConfigurer {
+class WebSocketConfig(
+    private val chatService: ChatService,
+    @Value("\${kindred.websocket.allowed-origins:}") private val allowedOrigins: String,
+) : WebSocketMessageBrokerConfigurer {
 
     override fun registerStompEndpoints(registry: StompEndpointRegistry) {
-        registry.addEndpoint("/ws")
+        val origins = allowedOrigins.split(",").map(String::trim).filter(String::isNotEmpty)
+        val ep = registry.addEndpoint("/ws")
+        if (origins.isNotEmpty()) ep.setAllowedOrigins(*origins.toTypedArray())
     }
 
     override fun configureMessageBroker(registry: MessageBrokerRegistry) {

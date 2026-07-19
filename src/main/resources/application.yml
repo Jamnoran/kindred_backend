@@ -58,6 +58,9 @@ kindred:
   # object storage (R2 in prod, MinIO in dev/self-host — ARCHITECTURE.md §6)
   s3:
     endpoint: ${S3_ENDPOINT:http://localhost:9000}
+    # Browser-reachable URL for presigned upload links; differs from endpoint in Docker.
+    # Set to the host-accessible MinIO address when the API runs inside a container.
+    public-endpoint: ${S3_PUBLIC_ENDPOINT:}
     region: ${S3_REGION:auto}
     access-key: ${S3_ACCESS_KEY:kindred}
     secret-key: ${S3_SECRET_KEY:kindred-secret}
@@ -77,3 +80,8 @@ kindred:
   notifications:
     # cooldown per recipient+conversation between "new message" offline notifications
     message-throttle: ${NOTIFICATIONS_MESSAGE_THROTTLE:15m}
+  websocket:
+    # comma-separated origins allowed for the /ws STOMP handshake.
+    # In dev the Vite proxy sends Origin: http://localhost:5173 which Spring rejects
+    # unless it's listed here. In prod set WS_ALLOWED_ORIGINS to your frontend domain.
+    allowed-origins: ${WS_ALLOWED_ORIGINS:http://localhost:5173}

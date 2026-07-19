@@ -50,10 +50,11 @@ class AuthService(
     fun verifyEmail(token: String): User {
         val stored = tokens.findById(token).orElseThrow { InvalidVerificationTokenException() }
         if (stored.expiresAt.isBefore(clock.instant())) {
-            tokens.delete(stored)
+            tokens.deleteByToken(token)
             throw InvalidVerificationTokenException()
         }
         val user = users.findById(stored.userId).orElseThrow { InvalidVerificationTokenException() }
+        if (user.emailVerified) return user
         user.emailVerified = true
         tokens.deleteByUserId(user.id!!)
         return users.save(user)

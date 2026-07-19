@@ -34,6 +34,8 @@ services:
     environment:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY:-kindred}
       MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-kindred-secret}
+      # Allow browsers to PUT presigned uploads from the web app origin.
+      MINIO_API_CORS_ALLOW_ORIGIN: "*"
     ports:
       - "9000:9000" # S3 API
       - "9001:9001" # console
@@ -61,12 +63,15 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-kindred}
       REDIS_HOST: redis
       S3_ENDPOINT: http://minio:9000
+      # Presigned URLs must use the host-reachable address so browsers can PUT directly.
+      S3_PUBLIC_ENDPOINT: http://localhost:9000
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-kindred}
       S3_SECRET_KEY: ${S3_SECRET_KEY:-kindred-secret}
       # Stripe (premium one-time purchase) — docs/STRIPE_SETUP.md; empty = checkout disabled
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       STRIPE_PRICE_ID: ${STRIPE_PRICE_ID:-}
+      WEB_BASE_URL: ${WEB_BASE_URL:-http://localhost:5173}
     ports:
       - "8080:8080"
 
