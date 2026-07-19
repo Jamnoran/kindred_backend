@@ -18,6 +18,11 @@ spring:
   session:
     redis:
       namespace: kindred:session
+      # indexed exposes FindByIndexNameSessionRepository so an admin ban can expire a
+      # user's live sessions immediately. Note: the indexed repository runs CONFIG SET
+      # for keyspace notifications at startup — needs CONFIG enabled on Redis (fine for
+      # the compose/self-host Redis; managed Redis may need the config set manually).
+      repository-type: indexed
     timeout: ${SESSION_TIMEOUT:7d}
 
 server:

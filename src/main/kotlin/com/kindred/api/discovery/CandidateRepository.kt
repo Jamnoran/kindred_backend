@@ -16,7 +16,7 @@ interface CandidateView {
 /**
  * The SQL half of discovery: hard filters that never let a candidate through
  * (§7 — age window, viewer's distance limit via ST_Distance_Sphere, no repeats,
- * blocks severed both ways, deleted/unverified users invisible). JSON-based
+ * blocks severed both ways, deleted/banned/unverified users invisible). JSON-based
  * filters (looking_for, dealbreakers) are applied in DiscoveryService.
  */
 interface CandidateRepository : Repository<Profile, Long> {
@@ -33,6 +33,7 @@ interface CandidateRepository : Repository<Profile, Long> {
             JOIN profiles me ON me.user_id = :viewerId
             WHERE p.user_id <> :viewerId
               AND u.deleted_at IS NULL
+              AND u.banned_at IS NULL
               AND u.email_verified = 1
               AND TIMESTAMPDIFF(YEAR, u.dob, CURDATE()) BETWEEN :ageMin AND :ageMax
               AND NOT EXISTS (
