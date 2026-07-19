@@ -87,9 +87,25 @@ session — treat any 401 as "redirect to login".
     auto-adds `non_monogamy` when `open` or `polyamory` is chosen, so a
     "non-monogamy" filter finds everyone ENM. Selecting both `monogamy` and
     `non_monogamy` reads as "open to either". Unknown values → 400.
-- `PUT /profile/location` — `{lat, lng, visibility}` where visibility is
-  `hidden | approximate | precise`. `approximate` rounds displayed distances to
-  5 km steps for others; `hidden` excludes the user from nearby/distance features.
+- `PUT /profile/location` — `{lat?, lng?, visibility?}`; visibility is
+  `exact | approximate | hidden` (default on first set: `approximate`).
+  `approximate` coarsens the user's position for others; `hidden` excludes the
+  user from nearby/distance features. Responds with the full profile either way.
+  - `lat`/`lng` are optional **as a pair**: send both to set/replace the
+    location, omit both to change only `visibility` while keeping the stored
+    coordinates (the server never returns coordinates, so this is how a client
+    changes visibility without making the user re-pick a location). Exactly one
+    of the two → 400; visibility-only before any location was ever set → 422.
+  - The profile's `locationLabel` (also in `GET /profile`) is the nearest
+    city/town name for the stored location, e.g. `"Malmö"` — derived server-side
+    at write time, `null` until a location is set. It is never finer than city
+    granularity regardless of `visibility`, so it is safe to display.
+- `GET /geo/cities?q=malm&limit=8` — city autocomplete over the full GeoNames
+  places dataset (~135k, population ≥ 1000): diacritic-insensitive prefix match
+  (`q=malmo` finds Malmö), biggest places first, limit 1–20 (default 8). Returns
+  `[{id, name, country, lat, lng}]` with ISO-3166 alpha-2 `country` and city
+  *centroid* coordinates (public dataset values, fine to feed straight into
+  `PUT /profile/location`).
 - `GET /profiles/nearby?radiusKm=25` — nearby browse (distances rounded to whole
   km, max 100 results). Discovery (§5) is the main feed; this is auxiliary.
 

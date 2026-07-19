@@ -85,6 +85,32 @@ Legend: `[ ]` todo · `[x]` done · `[~]` in progress / partially done
 
 ## Work log
 
+- **2026-07-19** — Location label + visibility-only updates (V9, `geo/` package;
+  contract requested by the web client's Discover-page location editor). New
+  `profiles.location_label`: on every coordinate write the server reverse-geocodes
+  to the nearest GeoNames city/town and exposes it as `ProfileResponse.locationLabel`
+  (null until set; never finer than city granularity, safe to display).
+  `PUT /profile/location` now takes lat/lng as an optional *pair*: both → set
+  location, neither → visibility-only update keeping stored coords (one → 400;
+  visibility-only before any location exists → 422) — needed because the server
+  never returns stored coordinates. Privacy hardening: unless visibility is
+  `exact`, stored coordinates are snapped to a ~5 km grid at write time (lng step
+  cos-scaled; label still derived from the precise fix first). Caveat: the snap
+  applies on coordinate writes only — an exact→approximate visibility-only switch
+  keeps the previously stored precise point until the next coordinate write.
+  Also added `GET /geo/cities?q=` autocomplete (diacritic-insensitive prefix,
+  population-ranked, limit ≤ 20). All of it runs off a bundled GeoNames extract
+  (`src/main/resources/geo/cities.tsv.gz`, ~135k places, CC-BY 4.0 — see CLAUDE.md
+  for provenance/regeneration; download.geonames.org is proxy-blocked in remote
+  sessions, fetched via a GitHub mirror). Verified: unit + `@WebMvcTest` suites
+  (210 tests green) incl. real-dataset checks (55.6,13.0 → "Malmö", Tromsø/Łódź
+  normalization, antimeridian nearest); spec + CLIENT_INTEGRATION.md updated
+  (also fixed the doc's wrong `precise` → actual `exact` enum value). Open: the
+  V9 column + snap behavior still need a real-MySQL smoke test alongside the
+  existing spatial-query TODO; dataset is a 2017 GeoNames snapshot — refresh
+  before launch; `PUT /profile/location` could later accept a `cityId` from
+  `/geo/cities` directly.
+
 - **2026-07-09** — LGBTQ+ / non-monogamy support (V8 migration, `profile/` +
   `discovery/`): the platform was gender-blind (no gender/orientation fields at
   all — nothing excluded queer users, but a gay man couldn't say "show me men").
