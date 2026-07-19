@@ -50,13 +50,24 @@ class AuthService(
     fun verifyEmail(token: String): User {
         val stored = tokens.findById(token).orElseThrow { InvalidVerificationTokenException() }
         if (stored.expiresAt.isBefore(clock.instant())) {
-            tokens.delete(stored)
+            tokens.deleteByToken(token)
             throw InvalidVerificationTokenException()
         }
         val user = users.findById(stored.userId).orElseThrow { InvalidVerificationTokenException() }
+        if (user.emailVerified) return user
         user.emailVerified = true
         tokens.deleteByUserId(user.id!!)
         return users.save(user)
+    }
+
+    /**
+     * Login-time ban gate. Like the email-verified check, this runs only *after*
+     * the password has been verified, so the banned state can't be used to probe
+     * whether an email is registered. Reads the DB — bans happen mid-session.
+     */
+    fun assertNotBanned(userId: Long) {
+        val user = users.findById(userId).orElse(null) ?: return
+        if (user.bannedAt != null) throw AccountBannedException()
     }
 
     /** Always succeeds from the caller's perspective — no account enumeration via this endpoint. */

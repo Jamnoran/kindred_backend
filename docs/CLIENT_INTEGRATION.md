@@ -51,7 +51,7 @@ async function api(path, { method = "GET", body } = {}) {
     },
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (!res.ok) throw await res.json(); // RFC 7807 problem detail — see §10
+  if (!res.ok) throw await res.json(); // RFC 7807 problem detail — see §11
   return res.status === 204 ? null : res.json();
 }
 ```
@@ -63,7 +63,7 @@ async function api(path, { method = "GET", body } = {}) {
 | Sign up | `POST /auth/signup` `{email, password, dob}` | `dob` is `YYYY-MM-DD`; under-18 → 400. Password 8–72 chars. |
 | Verify | `POST /auth/verify-email` `{token}` | Token arrives by email as a link to the web app — your verify page extracts `token` and posts it. One-shot, expiring. |
 | Resend | `POST /auth/resend-verification` `{email}` | Always 204 (no account enumeration). |
-| Log in | `POST /auth/login` `{email, password}` | Sets the `SESSION` cookie. 401 = bad credentials; **403 = correct password but email not verified** → show "check your inbox". |
+| Log in | `POST /auth/login` `{email, password}` | Sets the `SESSION` cookie. 401 = bad credentials; **403 = correct password but email not verified** ("check your inbox") **or account suspended** — branch on the problem `detail` (§11). |
 | Who am I | `GET /auth/me` | Returns `{id, email, emailVerified}`; 401 = not logged in. Use it on app boot to restore the session. |
 | Log out | `POST /auth/logout` | 204, clears the session. CSRF header required. |
 
@@ -331,14 +331,46 @@ the sender but **never include message content**. Notification emails deep-link
 to `{web-base-url}/conversations/{conversationId}` — the web app must route
 that path.
 
-## 9. Not implemented yet (don't build against these)
+## 9. Reporting users & admin moderation
 
-Report/block, rate limiting, and GDPR export are pending backend phases
-(Phase 4+). The `type` field on `ChatEvent` is open-ended — **ignore unknown
-event types** instead of erroring, so new event kinds can ship without breaking
-older clients.
+Any logged-in user can report another user (bots, catfishing, inappropriate
+behavior). Put a "Report" action on profile views, discovery cards, and
+conversations:
 
-## 10. Errors
+- `POST /users/{userId}/report` `{reason, details?}` — `reason` is one of
+  `bot | catfish | inappropriate | underage | other`; `details` is optional free
+  text (≤ 2000 chars). 201 → the stored report. Errors: **409** = you already
+  have an open report on this user (show "already reported"), 404 = unknown
+  user, 422 = tried to report yourself.
+- Reports are reviewed by human moderators; the reporter gets no status
+  feedback (by design — don't build a "report status" screen).
+
+**Admin endpoints** (for the moderation UI only): gated by `users.is_admin`,
+which is granted manually via SQL — there is no signup path to admin. Non-admins
+get **403** on all of these:
+
+- `GET /admin/reports` — the queue: one entry per reported user, most open
+  reports first, each with `openReportCount`, `totalReportCount`, the open
+  reports, and the user's email/displayName/banned flag.
+- `POST /admin/reports/{reportId}/dismiss` — close a report without acting.
+- `POST /admin/users/{userId}/ban` / `POST /admin/users/{userId}/unban` —
+  ban blocks login, kills the user's live sessions, hides them from discovery,
+  and resolves their open reports. 409 if already banned / not banned.
+- `DELETE /admin/users/{userId}` — soft-deletes the account (behaves like
+  self-deletion; GDPR hard erasure is a separate pending job).
+
+A banned user who tries to log in gets **403 with detail "this account has been
+suspended"** — distinguish it from the unverified-email 403 by the `detail`
+field (§2).
+
+## 10. Not implemented yet (don't build against these)
+
+User-level block, rate limiting, GDPR export, and the verified-badge selfie
+flow are pending backend phases (Phase 4+). The `type` field on `ChatEvent` is
+open-ended — **ignore unknown event types** instead of erroring, so new event
+kinds can ship without breaking older clients.
+
+## 11. Errors
 
 Errors are RFC 7807 problem details (`application/problem+json`):
 
@@ -348,5 +380,6 @@ Errors are RFC 7807 problem details (`application/problem+json`):
 
 Handle globally: 401 → login screen; **402 → premium required** (image
 messaging in a free/free chat — show the upgrade prompt, §6); 403 on login →
-unverified email; 403 elsewhere → missing CSRF header (§1); 404 on
+unverified email or suspended account (branch on `detail`, §2); 403 on
+`/admin/*` → not an admin; 403 elsewhere → missing CSRF header (§1); 404 on
 conversations → treat as gone; 400 → show `detail`.

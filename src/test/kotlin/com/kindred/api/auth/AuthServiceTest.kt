@@ -107,7 +107,7 @@ class AuthServiceTest {
         whenever(tokens.findById(stored.token)).thenReturn(Optional.of(stored))
 
         assertThrows<InvalidVerificationTokenException> { service.verifyEmail(stored.token) }
-        verify(tokens).delete(stored)
+        verify(tokens).deleteByToken(stored.token)
     }
 
     @Test

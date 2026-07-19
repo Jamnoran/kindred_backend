@@ -53,10 +53,11 @@ class AuthController(
             UsernamePasswordAuthenticationToken.unauthenticated(req.email.trim().lowercase(), req.password),
         )
         val principal = authentication.principal as KindredUserDetails
-        // Only reveal the unverified state after the password checked out
+        // Only reveal the unverified/banned state after the password checked out
         if (!principal.emailVerified) {
             throw EmailNotVerifiedException()
         }
+        authService.assertNotBanned(principal.id)
         // Session fixation protection: never carry a pre-login session across authentication
         request.getSession(false)?.invalidate()
         val context = SecurityContextHolder.createEmptyContext()

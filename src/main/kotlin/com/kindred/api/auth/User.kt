@@ -38,4 +38,12 @@ class User(
     // One-time paid upgrade (never expires); NULL = free account
     @Column(name = "premium_since")
     var premiumSince: Instant? = null,
+
+    // Granted via SQL only (no API) — gates the /admin endpoints
+    @Column(name = "is_admin", nullable = false)
+    var isAdmin: Boolean = false,
+
+    // Admin ban marker; NULL = active. Reversible, unlike deletedAt.
+    @Column(name = "banned_at")
+    var bannedAt: Instant? = null,
 )

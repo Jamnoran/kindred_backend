@@ -2,6 +2,7 @@ package com.kindred.api.auth
 
 import com.kindred.api.config.SecurityConfig
 import org.hamcrest.Matchers.notNullValue
+import org.hamcrest.Matchers.nullValue
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.verifyNoInteractions
@@ -194,6 +195,23 @@ class AuthControllerTest {
                 .content("""{"email":"new@example.com","password":"password123"}"""),
         )
             .andExpect(status().isForbidden)
+    }
+
+    @Test
+    fun `login with a banned account is 403`() {
+        val principal = principal(verified = true)
+        whenever(authenticationManager.authenticate(any())).thenReturn(
+            UsernamePasswordAuthenticationToken.authenticated(principal, null, principal.authorities),
+        )
+        whenever(authService.assertNotBanned(1L)).thenThrow(AccountBannedException())
+
+        mockMvc.perform(
+            post("/api/v1/auth/login").with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"email":"new@example.com","password":"password123"}"""),
+        )
+            .andExpect(status().isForbidden)
+            .andExpect(request().sessionAttribute("SPRING_SECURITY_CONTEXT", nullValue()))
     }
 
     @Test

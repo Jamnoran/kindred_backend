@@ -40,28 +40,27 @@ class MediaUploadService(
     private val random = SecureRandom()
 
     fun presignProfilePhotoUpload(userId: Long, contentType: String): PresignedUpload =
-        presignQuarantineUpload(contentType, mapOf("uploader-user-id" to userId.toString()))
+        presignQuarantineUpload(contentType)
 
     /** Chat images (§6B) start in the same quarantine; they promote to `chat-media/`, never `profiles/`. */
     fun presignChatImageUpload(userId: Long, conversationId: Long, contentType: String): PresignedUpload =
-        presignQuarantineUpload(
-            contentType,
-            mapOf("uploader-user-id" to userId.toString(), "conversation-id" to conversationId.toString()),
-        )
+        presignQuarantineUpload(contentType)
 
-    private fun presignQuarantineUpload(contentType: String, metadata: Map<String, String>): PresignedUpload {
+    private fun presignQuarantineUpload(contentType: String): PresignedUpload {
         val normalized = contentType.trim().lowercase()
         if (normalized !in ALLOWED_IMAGE_TYPES) {
             throw UnsupportedImageTypeException(contentType)
         }
         // Random, non-enumerable key (§6); user id deliberately not part of it
         val key = QUARANTINE_PREFIX + ByteArray(16).also(random::nextBytes).joinToString("") { "%02x".format(it) }
+        // Attribution (uploader, conversation) is not embedded as S3 object metadata because
+        // presigning metadata bakes x-amz-meta-* into X-Amz-SignedHeaders; the browser would
+        // need to send those headers verbatim or the PUT signature fails (400). Attribution is
+        // instead derived at registration time from the authenticated session.
         val objectRequest = PutObjectRequest.builder()
             .bucket(props.bucket)
             .key(key)
             .contentType(normalized)
-            // recorded so the worker can attribute the upload without trusting the client
-            .metadata(metadata)
             .build()
         val presigned = presigner.presignPutObject(
             PutObjectPresignRequest.builder()

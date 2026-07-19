@@ -10,7 +10,7 @@ import java.time.Instant
 @Table(name = "email_verification_tokens")
 class EmailVerificationToken(
     @Id
-    @Column(length = 64)
+    @Column(columnDefinition = "CHAR(64)")
     var token: String,
 
     @Column(name = "user_id", nullable = false)
