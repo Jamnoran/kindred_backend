@@ -21,11 +21,17 @@ data class UpdateProfileRequest(
     val interests: List<@NotBlank @Size(max = 64) String>? = null,
 )
 
+/**
+ * lat/lng are optional *as a pair*: both present → set/replace the stored location;
+ * both absent → visibility-only update that keeps the stored coordinates (the server
+ * never returns them, so this is the only way to change visibility without re-picking
+ * a location). Exactly one present → 400.
+ */
 data class UpdateLocationRequest(
     @field:Min(-90) @field:Max(90)
-    val lat: Double,
+    val lat: Double? = null,
     @field:Min(-180) @field:Max(180)
-    val lng: Double,
+    val lng: Double? = null,
     val visibility: LocationVisibility? = null,
 )
 
@@ -45,6 +51,8 @@ data class ProfileResponse(
     val interests: List<InterestResponse>,
     val locationSet: Boolean,
     val locationVisibility: LocationVisibility,
+    /** Nearest-city name for the stored location (e.g. "Malmö"); null when unset. */
+    val locationLabel: String?,
     val lastActiveAt: Instant,
 ) {
     companion object {
@@ -58,6 +66,7 @@ data class ProfileResponse(
             interests = profile.interests.map(InterestResponse::from).sortedBy { it.slug },
             locationSet = profile.locationSet,
             locationVisibility = profile.locationVisibility,
+            locationLabel = profile.locationLabel,
             lastActiveAt = profile.lastActiveAt,
         )
     }

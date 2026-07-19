@@ -87,6 +87,10 @@ class Profile(
     @Column(name = "location_visibility", nullable = false)
     var locationVisibility: LocationVisibility = LocationVisibility.approximate,
 
+    /** Nearest-city label for the stored location — always city-coarse, safe to display. */
+    @Column(name = "location_label", length = 120)
+    var locationLabel: String? = null,
+
     @Column(name = "last_active_at", nullable = false)
     var lastActiveAt: Instant = Instant.now(),
 

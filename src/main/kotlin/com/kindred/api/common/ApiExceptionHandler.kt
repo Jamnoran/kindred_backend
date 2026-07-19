@@ -30,9 +30,11 @@ import com.kindred.api.photo.PhotoNotFoundException
 import com.kindred.api.premium.AlreadyPremiumException
 import com.kindred.api.premium.InvalidStripeWebhookException
 import com.kindred.api.premium.PremiumRequiredException
+import com.kindred.api.profile.IncompleteCoordinatesException
 import com.kindred.api.profile.LocationNotSetException
 import com.kindred.api.profile.ProfileNotFoundException
 import com.kindred.api.profile.UnknownInterestException
+import com.kindred.api.profile.VisibilityWithoutLocationException
 import jakarta.validation.ConstraintViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ProblemDetail
@@ -69,6 +71,13 @@ class ApiExceptionHandler {
 
     @ExceptionHandler(LocationNotSetException::class)
     fun locationNotSet(e: LocationNotSetException) = problem(HttpStatus.CONFLICT, e.message)
+
+    @ExceptionHandler(IncompleteCoordinatesException::class)
+    fun incompleteCoordinates(e: IncompleteCoordinatesException) = problem(HttpStatus.BAD_REQUEST, e.message)
+
+    @ExceptionHandler(VisibilityWithoutLocationException::class)
+    fun visibilityWithoutLocation(e: VisibilityWithoutLocationException) =
+        problem(HttpStatus.UNPROCESSABLE_ENTITY, e.message)
 
     @ExceptionHandler(CannotReactToSelfException::class)
     fun reactToSelf(e: CannotReactToSelfException) = problem(HttpStatus.UNPROCESSABLE_ENTITY, e.message)

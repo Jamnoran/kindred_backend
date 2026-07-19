@@ -1,5 +1,7 @@
 package com.kindred.api.profile
 
+import com.kindred.api.geo.City
+import com.kindred.api.geo.CityIndex
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.kotlin.any
@@ -20,8 +22,9 @@ class ProfileServiceTest {
 
     private val profiles: ProfileRepository = mock()
     private val interests: InterestRepository = mock()
+    private val cityIndex: CityIndex = mock()
     private val now = Instant.parse("2026-07-02T12:00:00Z")
-    private val service = ProfileService(profiles, interests, Clock.fixed(now, ZoneOffset.UTC))
+    private val service = ProfileService(profiles, interests, cityIndex, Clock.fixed(now, ZoneOffset.UTC))
 
     private val hiking = Interest(id = 1L, slug = "hiking", label = "Hiking")
     private val coffee = Interest(id = 2L, slug = "coffee", label = "Coffee")
@@ -110,17 +113,78 @@ class ProfileServiceTest {
     }
 
     @Test
-    fun `updateLocation persists visibility and runs the spatial update`() {
+    fun `updateLocation persists visibility, derives the label, and runs the spatial update`() {
         val existing = Profile(userId = 1L, displayName = "Alice")
         whenever(profiles.findById(1L)).thenReturn(Optional.of(existing))
         whenever(profiles.findWithInterestsByUserId(1L)).thenReturn(existing)
         whenever(profiles.save(any())).thenAnswer { it.arguments[0] }
+        whenever(cityIndex.nearest(59.33, 18.07))
+            .thenReturn(City(id = 2673730, name = "Stockholm", country = "SE", lat = 59.32938, lng = 18.06871, population = 1_515_017))
 
         service.updateLocation(1L, UpdateLocationRequest(lat = 59.33, lng = 18.07, visibility = LocationVisibility.exact))
 
+        // exact visibility → coordinates stored precisely, no grid snapping
         verify(profiles).updateLocation(1L, 59.33, 18.07)
         val saved = argumentCaptor<Profile>().apply { verify(profiles).save(capture()) }.firstValue
         assertEquals(LocationVisibility.exact, saved.locationVisibility)
+        assertEquals("Stockholm", saved.locationLabel)
+    }
+
+    @Test
+    fun `updateLocation snaps stored coordinates to the ~5km grid unless visibility is exact`() {
+        val existing = Profile(userId = 1L, displayName = "Alice") // default visibility: approximate
+        whenever(profiles.findById(1L)).thenReturn(Optional.of(existing))
+        whenever(profiles.findWithInterestsByUserId(1L)).thenReturn(existing)
+        whenever(profiles.save(any())).thenAnswer { it.arguments[0] }
+
+        service.updateLocation(1L, UpdateLocationRequest(lat = 55.60587, lng = 13.00073))
+
+        val lat = argumentCaptor<Double>()
+        val lng = argumentCaptor<Double>()
+        verify(profiles).updateLocation(eq(1L), lat.capture(), lng.capture())
+        // label is derived from the precise fix, storage gets the snapped one
+        verify(cityIndex).nearest(55.60587, 13.00073)
+        // on the 0.045° latitude grid (modulo float error), within one cell of the original
+        assertEquals(Math.round(lat.firstValue / 0.045) * 0.045, lat.firstValue, 1e-9)
+        assertEquals(55.60587, lat.firstValue, 0.045)
+        assertEquals(13.00073, lng.firstValue, 0.09)
+    }
+
+    @Test
+    fun `updateLocation with visibility only keeps the stored coordinates and label`() {
+        val existing = Profile(userId = 1L, displayName = "Alice", locationSet = true, locationLabel = "Malmö")
+        whenever(profiles.findById(1L)).thenReturn(Optional.of(existing))
+        whenever(profiles.findWithInterestsByUserId(1L)).thenReturn(existing)
+        whenever(profiles.save(any())).thenAnswer { it.arguments[0] }
+
+        service.updateLocation(1L, UpdateLocationRequest(visibility = LocationVisibility.hidden))
+
+        verify(profiles, never()).updateLocation(any(), any(), any())
+        val saved = argumentCaptor<Profile>().apply { verify(profiles).save(capture()) }.firstValue
+        assertEquals(LocationVisibility.hidden, saved.locationVisibility)
+        assertEquals("Malmö", saved.locationLabel)
+    }
+
+    @Test
+    fun `updateLocation with visibility only is rejected before any location was stored`() {
+        val existing = Profile(userId = 1L, displayName = "Alice", locationSet = false)
+        whenever(profiles.findById(1L)).thenReturn(Optional.of(existing))
+
+        assertThrows<VisibilityWithoutLocationException> {
+            service.updateLocation(1L, UpdateLocationRequest(visibility = LocationVisibility.exact))
+        }
+        verify(profiles, never()).save(any())
+    }
+
+    @Test
+    fun `updateLocation rejects a lone coordinate`() {
+        assertThrows<IncompleteCoordinatesException> {
+            service.updateLocation(1L, UpdateLocationRequest(lat = 55.6))
+        }
+        assertThrows<IncompleteCoordinatesException> {
+            service.updateLocation(1L, UpdateLocationRequest(lng = 13.0))
+        }
+        verify(profiles, never()).save(any())
     }
 
     @Test

@@ -886,6 +886,53 @@
         }
       }
     },
+    "/api/v1/geo/cities": {
+      "get": {
+        "tags": [
+          "geo-controller"
+        ],
+        "operationId": "cities",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 100,
+              "minLength": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 8,
+              "maximum": 20,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CityResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/discovery": {
       "get": {
         "tags": [
@@ -1207,6 +1254,9 @@
               "hidden"
             ]
           },
+          "locationLabel": {
+            "type": "string"
+          },
           "lastActiveAt": {
             "type": "string",
             "format": "date-time"
@@ -1246,11 +1296,7 @@
               "hidden"
             ]
           }
-        },
-        "required": [
-          "lat",
-          "lng"
-        ]
+        }
       },
       "UpdatePreferencesRequest": {
         "type": "object",
@@ -1986,6 +2032,36 @@
           "kind",
           "likedAt",
           "userId"
+        ]
+      },
+      "CityResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "lat": {
+            "type": "number",
+            "format": "double"
+          },
+          "lng": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": [
+          "country",
+          "id",
+          "lat",
+          "lng",
+          "name"
         ]
       },
       "DiscoveryCard": {

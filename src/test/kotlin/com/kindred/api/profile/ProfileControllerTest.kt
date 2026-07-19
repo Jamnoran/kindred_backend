@@ -131,7 +131,12 @@ class ProfileControllerTest {
 
     @Test
     fun `put location updates coordinates`() {
-        whenever(profileService.updateLocation(eq(1L), any())).thenReturn(profile())
+        whenever(profileService.updateLocation(eq(1L), any())).thenReturn(
+            profile().apply {
+                locationSet = true
+                locationLabel = "Stockholm"
+            },
+        )
 
         mockMvc.perform(
             put("/api/v1/profile/location").with(user(alice)).with(csrf())
@@ -139,6 +144,44 @@ class ProfileControllerTest {
                 .content("""{"lat":59.33,"lng":18.07,"visibility":"exact"}"""),
         )
             .andExpect(status().isOk)
+            .andExpect(jsonPath("$.locationSet").value(true))
+            .andExpect(jsonPath("$.locationLabel").value("Stockholm"))
+    }
+
+    @Test
+    fun `put location accepts a visibility-only body`() {
+        whenever(profileService.updateLocation(eq(1L), any())).thenReturn(profile())
+
+        mockMvc.perform(
+            put("/api/v1/profile/location").with(user(alice)).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"visibility":"hidden"}"""),
+        )
+            .andExpect(status().isOk)
+    }
+
+    @Test
+    fun `put location with a lone coordinate is 400`() {
+        whenever(profileService.updateLocation(eq(1L), any())).thenThrow(IncompleteCoordinatesException())
+
+        mockMvc.perform(
+            put("/api/v1/profile/location").with(user(alice)).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"lat":59.33}"""),
+        )
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `put location visibility-only without a stored location is 422`() {
+        whenever(profileService.updateLocation(eq(1L), any())).thenThrow(VisibilityWithoutLocationException())
+
+        mockMvc.perform(
+            put("/api/v1/profile/location").with(user(alice)).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"visibility":"hidden"}"""),
+        )
+            .andExpect(status().isUnprocessableEntity)
     }
 
     @Test
