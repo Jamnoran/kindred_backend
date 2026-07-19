@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Min
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -33,6 +34,12 @@ class ProfileController(private val profileService: ProfileService) {
         @AuthenticationPrincipal principal: KindredUserDetails,
         @Valid @RequestBody req: UpdateLocationRequest,
     ): ProfileResponse = ProfileResponse.from(profileService.updateLocation(principal.id, req))
+
+    @GetMapping("/profiles/{userId}")
+    fun matchProfile(
+        @AuthenticationPrincipal principal: KindredUserDetails,
+        @PathVariable userId: Long,
+    ): MatchProfileResponse = profileService.getMatchProfile(principal.id, userId)
 
     @GetMapping("/profiles/nearby")
     fun nearby(

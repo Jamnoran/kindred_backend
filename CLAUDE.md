@@ -69,16 +69,8 @@ separate repo (`kindred_web`) and codegens its client from `openapi/kindred-api.
 - `ChatService.requireMembership(userId, conversationId)` is the chat authz
   primitive — call it on every read/send; it returns the `Match` (participants =
   `userA`/`userB`). Non-membership throws `ConversationNotFoundException` (404).
-- Optional beans (`ChatEventRelay`, `PresenceService`, and the Spring Session
-  repository in `AdminService`) are injected as `ObjectProvider` because the
-  `openapi` profile and slice tests boot without Redis.
-- Spring Session runs the **indexed** Redis repository
-  (`spring.session.redis.repository-type: indexed`) so an admin ban can expire a
-  user's live sessions by principal name. The indexed repo issues `CONFIG SET`
-  for keyspace notifications at startup — managed Redis with CONFIG disabled
-  needs `notify-keyspace-events` set out-of-band.
-- Admin access is `users.is_admin`, granted via SQL only; `AdminService.requireAdmin`
-  re-reads it from the DB per request (the session principal is stale by design).
+- Optional beans (`ChatEventRelay`, `PresenceService`) are injected as
+  `ObjectProvider` because the `openapi` profile and slice tests boot without Redis.
 
 ## Process / docs contract
 
@@ -119,21 +111,6 @@ separate repo (`kindred_web`) and codegens its client from `openapi/kindred-api.
   empty defaults keep boots/tests working without Stripe. `grant()` is
   idempotent (webhook retries safe); refunds don't auto-revoke. Webhook tests
   compute real signatures via `Webhook.Util.computeHmacSha256`.
-- **Geo dataset** (`src/main/resources/geo/cities.tsv.gz`): GeoNames cities1000
-  extract (~135k places, CC-BY 4.0), columns `id, name, country, lat, lng,
-  population`, sorted population-descending (search relies on that order).
-  `geo/CityIndex` lazy-loads it for `locationLabel` reverse geocoding and
-  `GET /geo/cities`. To regenerate: download `cities1000.txt` (NB:
-  download.geonames.org is blocked by the remote-session egress proxy — the
-  GitHub mirror `raw.githubusercontent.com/nabilashraf/cities1000` works, but is
-  a 2017 snapshot; refresh from geonames.org proper before launch), then
-  `awk -F'\t' 'BEGIN{OFS="\t"} {print $1,$2,$9,$5,$6,$15+0}' cities1000.txt |
-  sort -t$'\t' -k6,6nr | gzip -9 > src/main/resources/geo/cities.tsv.gz`.
-- Location privacy: stored coordinates are snapped to a ~5 km grid at write time
-  unless visibility is `exact` (`ProfileService.updateLocation`); `location_label`
-  is always the nearest city (derived from the precise fix, before snapping) and
-  is safe to display. The server never returns raw coordinates — that's why
-  `PUT /profile/location` supports visibility-only updates (both lat+lng absent).
 - Matches are stored ordered (`user_a < user_b`, DB CHECK). "Who liked you" is
   free by design. Discovery scoring is transparent and user-weighted (§7).
 - **Inclusivity model** (V8): `profiles.gender` is optional/self-identified

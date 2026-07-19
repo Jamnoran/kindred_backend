@@ -50,11 +50,8 @@ Legend: `[ ]` todo · `[x]` done · `[~]` in progress / partially done
 
 ## Phase 4 — Safety & legal
 
-- [~] Report + block — reporting shipped 2026-07-15 (`moderation/`); user-level
-      block endpoint still todo (the `blocks` table + discovery exclusion already exist)
-- [~] Moderation queue + `moderation_events` audit log wiring — report queue +
-      admin ban/unban/delete with audit events shipped 2026-07-15; photo/media
-      (NSFW flag) review queue still todo
+- [ ] Report + block (block fully severs visibility + messaging both ways)
+- [ ] Moderation queue + `moderation_events` audit log wiring
 - [ ] GDPR: data export + real erasure (rows **and** image bytes)
 - [ ] Rate limiting / anti-abuse (Redis)
 
@@ -84,121 +81,10 @@ Legend: `[ ]` todo · `[x]` done · `[~]` in progress / partially done
 - [ ] Real SMTP mailer (shared with email verification)
 - [ ] More channels (web push?) as product wants them
 
-## Identity verification — selfie + verified badge (product decision 2026-07-15)
-
-> Chosen approach for "is this person real": **selfie verification with a
-> profile badge, reviewed manually by a moderator** — the anti-catfish check
-> users actually care about on a dating platform. Deliberately *not* phone/SMS
-> (proves SIM ownership, not the photos), not a biometric vendor (cost + GDPR
-> Art. 9 special-category data), not government ID (friction; revisit if age-
-> assurance regulation demands it). Manual review means no biometric template is
-> ever computed or stored — a human compares two images, decides, and the selfie
-> is deleted. Optional, never required to use the platform.
-
-### How it should work (implementation guide)
-
-1. **Challenge**: `POST /verification/selfie` starts an attempt — the server
-   picks a random pose from a fixed set (e.g. "peace sign next to your ear",
-   "thumbs up under your chin"; ~8–10 poses, slugs + client-rendered
-   illustrations) and returns `{poseSlug, uploadUrl, storageKey, expiresAt}`.
-   The presigned PUT reuses the §6A quarantine flow (`MediaUploadService`) —
-   selfies land in `quarantine/`, never a public prefix. The random pose is what
-   defeats stolen photos: an old image won't match a pose chosen seconds ago.
-2. **Submit**: `PUT` the selfie to the presigned URL, then
-   `POST /verification/selfie/submit {storageKey}` records a
-   `verification_requests` row (pending) and enqueues the existing JobRunr image
-   pipeline: magic-byte validation → re-encode/EXIF strip → NSFW/CSAM scan hook
-   → promote to a **private** `verification/` prefix (chat-media rules: 5-min
-   presigned GETs only). Single-use storage keys, same cross-table check.
-3. **Moderator review**: `GET /admin/verifications` (same `AdminService.
-   requireAdmin` gate as the report queue) lists pending requests with the
-   selfie + the user's current profile photos side by side and the assigned
-   pose. `POST /admin/verifications/{id}/approve` / `.../reject {reason}` —
-   decisions append `moderation_events` (`verification_approved/rejected`),
-   like every other moderation action.
-4. **Badge**: approve sets `profiles.verified_at`; expose `verified: true` on
-   own profile, discovery cards, received likes, and conversation headers.
-   Reject lets the user retry (rate-limit attempts, e.g. 3/day via the Phase 4
-   Redis limiter). Replacing all profile photos after approval should flag the
-   profile for re-review (v2 — note it, don't build it yet).
-5. **Data handling**: the selfie is identity data — delete the object (and its
-   sizes) as soon as a decision lands, keep only the request row + decision.
-   Consent copy in the client before the camera opens. GDPR erasure must sweep
-   `verification/` too.
-
-### Schema sketch (V-next)
-
-    verification_requests: id, user_id FK, storage_key (single-use), pose_slug,
-      status ENUM(pending/approved/rejected), reject_reason, created_at,
-      reviewed_by FK nullable, reviewed_at
-    profiles: + verified_at TIMESTAMP NULL
-
-### Tasks
-
-- [ ] Migration + `VerificationRequest` entity/repo + pose catalog
-- [ ] Challenge + submit endpoints reusing quarantine presign & JobRunr pipeline
-- [ ] Admin review queue + approve/reject endpoints + moderation events
-- [ ] `verified` badge in profile/discovery/likes/conversation DTOs
-- [ ] Selfie deletion on decision + GDPR-erasure sweep of `verification/`
-- [ ] Attempt rate limiting (shares the Phase 4 Redis limiter)
-- [ ] CLIENT_INTEGRATION.md §: consent copy, pose UX, retry flow
-
 ---
 
 ## Work log
 
-- **2026-07-19** — Location label + visibility-only updates (V9, `geo/` package;
-  contract requested by the web client's Discover-page location editor). New
-  `profiles.location_label`: on every coordinate write the server reverse-geocodes
-  to the nearest GeoNames city/town and exposes it as `ProfileResponse.locationLabel`
-  (null until set; never finer than city granularity, safe to display).
-  `PUT /profile/location` now takes lat/lng as an optional *pair*: both → set
-  location, neither → visibility-only update keeping stored coords (one → 400;
-  visibility-only before any location exists → 422) — needed because the server
-  never returns stored coordinates. Privacy hardening: unless visibility is
-  `exact`, stored coordinates are snapped to a ~5 km grid at write time (lng step
-  cos-scaled; label still derived from the precise fix first). Caveat: the snap
-  applies on coordinate writes only — an exact→approximate visibility-only switch
-  keeps the previously stored precise point until the next coordinate write.
-  Also added `GET /geo/cities?q=` autocomplete (diacritic-insensitive prefix,
-  population-ranked, limit ≤ 20). All of it runs off a bundled GeoNames extract
-  (`src/main/resources/geo/cities.tsv.gz`, ~135k places, CC-BY 4.0 — see CLAUDE.md
-  for provenance/regeneration; download.geonames.org is proxy-blocked in remote
-  sessions, fetched via a GitHub mirror). Verified: unit + `@WebMvcTest` suites
-  (210 tests green) incl. real-dataset checks (55.6,13.0 → "Malmö", Tromsø/Łódź
-  normalization, antimeridian nearest); spec + CLIENT_INTEGRATION.md updated
-  (also fixed the doc's wrong `precise` → actual `exact` enum value). Open: the
-  V9 column + snap behavior still need a real-MySQL smoke test alongside the
-  existing spatial-query TODO; dataset is a 2017 GeoNames snapshot — refresh
-  before launch; `PUT /profile/location` could later accept a `cityId` from
-  `/geo/cities` directly.
-
-- **2026-07-15** — Phase 4 reporting + admin moderation (`moderation/` package,
-  V9). Users: `POST /users/{id}/report` (`bot|catfish|inappropriate|underage|
-  other` + optional details) — one *open* report per reporter/target pair (409
-  on dupes, re-reporting after dismissal OK), self-report 422, deleted target
-  404. Admin: `users.is_admin` (granted via SQL only, no API) checked from the
-  DB on every call (principal goes stale) → 403; `GET /admin/reports` groups
-  open reports per reported user, most-reported first, with open/total counts +
-  email/displayName/banned; dismiss / ban / unban / `DELETE /admin/users/{id}`
-  (soft-delete, same semantics as self-deletion — GDPR hard erasure still the
-  separate Phase 4 task). Ban sets `users.banned_at`: login → 403 "suspended"
-  (checked *after* password, no enumeration; like the unverified check), live
-  sessions killed via Spring Session's `FindByIndexNameSessionRepository`
-  (**switched `spring.session.redis.repository-type` to `indexed`** — needs
-  CONFIG enabled on Redis; ObjectProvider-injected so slice tests/openapi boot
-  without it, at the cost of "no Redis = ban waits for session expiry"),
-  excluded from discovery (`banned_at IS NULL` in CandidateRepository).
-  Admins can't be banned/deleted (409). Every action appends
-  `moderation_events` (report_filed/report_dismissed/user_banned/user_unbanned/
-  user_deleted). Verified: service + controller slice tests throughout (51
-  tests: grouping/sorting, session kill incl. no-Redis path, all error
-  mappings, banned-login 403), full suite green, OpenAPI regenerated,
-  CLIENT_INTEGRATION.md §9. Still open: user-level block endpoint, photo/media
-  review queue, rate-limiting report spam (per-pair dedupe only), banned users'
-  likes/matches stay visible to others until deletion, notification emails
-  aren't suppressed for banned recipients. Also this entry's sibling: the
-  **selfie-verification guide** section above (decision + plan, nothing built).
 - **2026-07-09** — LGBTQ+ / non-monogamy support (V8 migration, `profile/` +
   `discovery/`): the platform was gender-blind (no gender/orientation fields at
   all — nothing excluded queer users, but a gay man couldn't say "show me men").

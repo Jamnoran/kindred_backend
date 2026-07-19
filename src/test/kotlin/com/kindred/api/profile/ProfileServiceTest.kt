@@ -1,7 +1,10 @@
 package com.kindred.api.profile
 
+import com.kindred.api.discovery.MatchRepository
+import com.kindred.api.discovery.UserAgeLookup
 import com.kindred.api.geo.City
 import com.kindred.api.geo.CityIndex
+import com.kindred.api.photo.PhotoRepository
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.kotlin.any
@@ -23,8 +26,14 @@ class ProfileServiceTest {
     private val profiles: ProfileRepository = mock()
     private val interests: InterestRepository = mock()
     private val cityIndex: CityIndex = mock()
+    private val matches: MatchRepository = mock()
+    private val photos: PhotoRepository = mock()
+    private val userAges: UserAgeLookup = mock()
     private val now = Instant.parse("2026-07-02T12:00:00Z")
-    private val service = ProfileService(profiles, interests, cityIndex, Clock.fixed(now, ZoneOffset.UTC))
+    private val service = ProfileService(
+        profiles, interests, cityIndex, Clock.fixed(now, ZoneOffset.UTC),
+        matches, photos, userAges, "http://localhost:9000",
+    )
 
     private val hiking = Interest(id = 1L, slug = "hiking", label = "Hiking")
     private val coffee = Interest(id = 2L, slug = "coffee", label = "Coffee")

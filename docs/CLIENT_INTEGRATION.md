@@ -51,7 +51,7 @@ async function api(path, { method = "GET", body } = {}) {
     },
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (!res.ok) throw await res.json(); // RFC 7807 problem detail — see §11
+  if (!res.ok) throw await res.json(); // RFC 7807 problem detail — see §10
   return res.status === 204 ? null : res.json();
 }
 ```
@@ -63,7 +63,7 @@ async function api(path, { method = "GET", body } = {}) {
 | Sign up | `POST /auth/signup` `{email, password, dob}` | `dob` is `YYYY-MM-DD`; under-18 → 400. Password 8–72 chars. |
 | Verify | `POST /auth/verify-email` `{token}` | Token arrives by email as a link to the web app — your verify page extracts `token` and posts it. One-shot, expiring. |
 | Resend | `POST /auth/resend-verification` `{email}` | Always 204 (no account enumeration). |
-| Log in | `POST /auth/login` `{email, password}` | Sets the `SESSION` cookie. 401 = bad credentials; **403 = correct password but email not verified** ("check your inbox") **or account suspended** — branch on the problem `detail` (§11). |
+| Log in | `POST /auth/login` `{email, password}` | Sets the `SESSION` cookie. 401 = bad credentials; **403 = correct password but email not verified** → show "check your inbox". |
 | Who am I | `GET /auth/me` | Returns `{id, email, emailVerified}`; 401 = not logged in. Use it on app boot to restore the session. |
 | Log out | `POST /auth/logout` | 204, clears the session. CSRF header required. |
 
@@ -87,25 +87,9 @@ session — treat any 401 as "redirect to login".
     auto-adds `non_monogamy` when `open` or `polyamory` is chosen, so a
     "non-monogamy" filter finds everyone ENM. Selecting both `monogamy` and
     `non_monogamy` reads as "open to either". Unknown values → 400.
-- `PUT /profile/location` — `{lat?, lng?, visibility?}`; visibility is
-  `exact | approximate | hidden` (default on first set: `approximate`).
-  `approximate` coarsens the user's position for others; `hidden` excludes the
-  user from nearby/distance features. Responds with the full profile either way.
-  - `lat`/`lng` are optional **as a pair**: send both to set/replace the
-    location, omit both to change only `visibility` while keeping the stored
-    coordinates (the server never returns coordinates, so this is how a client
-    changes visibility without making the user re-pick a location). Exactly one
-    of the two → 400; visibility-only before any location was ever set → 422.
-  - The profile's `locationLabel` (also in `GET /profile`) is the nearest
-    city/town name for the stored location, e.g. `"Malmö"` — derived server-side
-    at write time, `null` until a location is set. It is never finer than city
-    granularity regardless of `visibility`, so it is safe to display.
-- `GET /geo/cities?q=malm&limit=8` — city autocomplete over the full GeoNames
-  places dataset (~135k, population ≥ 1000): diacritic-insensitive prefix match
-  (`q=malmo` finds Malmö), biggest places first, limit 1–20 (default 8). Returns
-  `[{id, name, country, lat, lng}]` with ISO-3166 alpha-2 `country` and city
-  *centroid* coordinates (public dataset values, fine to feed straight into
-  `PUT /profile/location`).
+- `PUT /profile/location` — `{lat, lng, visibility}` where visibility is
+  `hidden | approximate | precise`. `approximate` rounds displayed distances to
+  5 km steps for others; `hidden` excludes the user from nearby/distance features.
 - `GET /profiles/nearby?radiusKm=25` — nearby browse (distances rounded to whole
   km, max 100 results). Discovery (§5) is the main feed; this is auxiliary.
 
@@ -331,46 +315,14 @@ the sender but **never include message content**. Notification emails deep-link
 to `{web-base-url}/conversations/{conversationId}` — the web app must route
 that path.
 
-## 9. Reporting users & admin moderation
+## 9. Not implemented yet (don't build against these)
 
-Any logged-in user can report another user (bots, catfishing, inappropriate
-behavior). Put a "Report" action on profile views, discovery cards, and
-conversations:
+Report/block, rate limiting, and GDPR export are pending backend phases
+(Phase 4+). The `type` field on `ChatEvent` is open-ended — **ignore unknown
+event types** instead of erroring, so new event kinds can ship without breaking
+older clients.
 
-- `POST /users/{userId}/report` `{reason, details?}` — `reason` is one of
-  `bot | catfish | inappropriate | underage | other`; `details` is optional free
-  text (≤ 2000 chars). 201 → the stored report. Errors: **409** = you already
-  have an open report on this user (show "already reported"), 404 = unknown
-  user, 422 = tried to report yourself.
-- Reports are reviewed by human moderators; the reporter gets no status
-  feedback (by design — don't build a "report status" screen).
-
-**Admin endpoints** (for the moderation UI only): gated by `users.is_admin`,
-which is granted manually via SQL — there is no signup path to admin. Non-admins
-get **403** on all of these:
-
-- `GET /admin/reports` — the queue: one entry per reported user, most open
-  reports first, each with `openReportCount`, `totalReportCount`, the open
-  reports, and the user's email/displayName/banned flag.
-- `POST /admin/reports/{reportId}/dismiss` — close a report without acting.
-- `POST /admin/users/{userId}/ban` / `POST /admin/users/{userId}/unban` —
-  ban blocks login, kills the user's live sessions, hides them from discovery,
-  and resolves their open reports. 409 if already banned / not banned.
-- `DELETE /admin/users/{userId}` — soft-deletes the account (behaves like
-  self-deletion; GDPR hard erasure is a separate pending job).
-
-A banned user who tries to log in gets **403 with detail "this account has been
-suspended"** — distinguish it from the unverified-email 403 by the `detail`
-field (§2).
-
-## 10. Not implemented yet (don't build against these)
-
-User-level block, rate limiting, GDPR export, and the verified-badge selfie
-flow are pending backend phases (Phase 4+). The `type` field on `ChatEvent` is
-open-ended — **ignore unknown event types** instead of erroring, so new event
-kinds can ship without breaking older clients.
-
-## 11. Errors
+## 10. Errors
 
 Errors are RFC 7807 problem details (`application/problem+json`):
 
@@ -380,6 +332,5 @@ Errors are RFC 7807 problem details (`application/problem+json`):
 
 Handle globally: 401 → login screen; **402 → premium required** (image
 messaging in a free/free chat — show the upgrade prompt, §6); 403 on login →
-unverified email or suspended account (branch on `detail`, §2); 403 on
-`/admin/*` → not an admin; 403 elsewhere → missing CSRF header (§1); 404 on
+unverified email; 403 elsewhere → missing CSRF header (§1); 404 on
 conversations → treat as gone; 400 → show `detail`.

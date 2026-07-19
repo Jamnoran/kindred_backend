@@ -12,4 +12,3 @@ class IncompleteCoordinatesException : RuntimeException("provide both lat and ln
 /** Visibility-only PUT /profile/location before any location was ever stored → 422. */
 class VisibilityWithoutLocationException :
     RuntimeException("no stored location to apply visibility to — include lat and lng")
-class LocationNotSetException : RuntimeException("location not set")

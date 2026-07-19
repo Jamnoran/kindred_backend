@@ -86,3 +86,16 @@ data class NearbyProfileResponse(
         )
     }
 }
+
+/** Returned by GET /profiles/{userId}; only accessible when a match exists. */
+data class MatchProfileResponse(
+    val userId: Long,
+    val displayName: String,
+    val age: Int,
+    val bio: String?,
+    val gender: Gender?,
+    val lookingFor: List<String>,
+    val relationshipStyles: List<RelationshipStyle>,
+    val interests: List<String>,
+    val photo: com.kindred.api.discovery.PhotoSummary?,
+)

@@ -203,47 +203,6 @@
         }
       }
     },
-    "/api/v1/users/{userId}/report": {
-      "post": {
-        "tags": [
-          "report-controller"
-        ],
-        "operationId": "report",
-        "parameters": [
-          {
-            "name": "userId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ReportRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ReportResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/stripe/webhook": {
       "post": {
         "tags": [
@@ -691,12 +650,12 @@
         }
       }
     },
-    "/api/v1/admin/users/{userId}/unban": {
-      "post": {
+    "/api/v1/profiles/{userId}": {
+      "get": {
         "tags": [
-          "admin-controller"
+          "profile-controller"
         ],
-        "operationId": "unbanUser",
+        "operationId": "matchProfile",
         "parameters": [
           {
             "name": "userId",
@@ -709,56 +668,15 @@
           }
         ],
         "responses": {
-          "204": {
-            "description": "No Content"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/users/{userId}/ban": {
-      "post": {
-        "tags": [
-          "admin-controller"
-        ],
-        "operationId": "banUser",
-        "parameters": [
-          {
-            "name": "userId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchProfileResponse"
+                }
+              }
             }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/reports/{reportId}/dismiss": {
-      "post": {
-        "tags": [
-          "admin-controller"
-        ],
-        "operationId": "dismissReport",
-        "parameters": [
-          {
-            "name": "reportId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
           }
         }
       }
@@ -878,53 +796,6 @@
                   "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/InterestResponse"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/geo/cities": {
-      "get": {
-        "tags": [
-          "geo-controller"
-        ],
-        "operationId": "cities",
-        "parameters": [
-          {
-            "name": "q",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "maxLength": 100,
-              "minLength": 1
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 8,
-              "maximum": 20,
-              "minimum": 1
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/CityResponse"
                   }
                 }
               }
@@ -1053,29 +924,6 @@
         }
       }
     },
-    "/api/v1/admin/reports": {
-      "get": {
-        "tags": [
-          "admin-controller"
-        ],
-        "operationId": "reportQueue",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ReportedUserSummary"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/photos/{id}": {
       "delete": {
         "tags": [
@@ -1085,30 +933,6 @@
         "parameters": [
           {
             "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/users/{userId}": {
-      "delete": {
-        "tags": [
-          "admin-controller"
-        ],
-        "operationId": "deleteUser",
-        "parameters": [
-          {
-            "name": "userId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1254,9 +1078,6 @@
               "hidden"
             ]
           },
-          "locationLabel": {
-            "type": "string"
-          },
           "lastActiveAt": {
             "type": "string",
             "format": "date-time"
@@ -1296,7 +1117,11 @@
               "hidden"
             ]
           }
-        }
+        },
+        "required": [
+          "lat",
+          "lng"
+        ]
       },
       "UpdatePreferencesRequest": {
         "type": "object",
@@ -1520,72 +1345,6 @@
         },
         "required": [
           "preferences"
-        ]
-      },
-      "ReportRequest": {
-        "type": "object",
-        "properties": {
-          "reason": {
-            "type": "string",
-            "enum": [
-              "bot",
-              "catfish",
-              "inappropriate",
-              "underage",
-              "other"
-            ]
-          },
-          "details": {
-            "type": "string",
-            "maxLength": 2000,
-            "minLength": 0
-          }
-        },
-        "required": [
-          "reason"
-        ]
-      },
-      "ReportResponse": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "reportedUserId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "reason": {
-            "type": "string",
-            "enum": [
-              "bot",
-              "catfish",
-              "inappropriate",
-              "underage",
-              "other"
-            ]
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "open",
-              "reviewing",
-              "resolved",
-              "dismissed"
-            ]
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "createdAt",
-          "id",
-          "reason",
-          "reportedUserId",
-          "status"
         ]
       },
       "CheckoutSessionResponse": {
@@ -1931,6 +1690,79 @@
           "password"
         ]
       },
+      "MatchProfileResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "age": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "bio": {
+            "type": "string"
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "woman",
+              "man",
+              "nonbinary"
+            ]
+          },
+          "lookingFor": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "relationshipStyles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "monogamy",
+                "non_monogamy",
+                "open",
+                "polyamory"
+              ]
+            }
+          },
+          "interests": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "photo": {
+            "$ref": "#/components/schemas/PhotoSummary"
+          }
+        },
+        "required": [
+          "age",
+          "displayName",
+          "interests",
+          "lookingFor",
+          "relationshipStyles",
+          "userId"
+        ]
+      },
+      "PhotoSummary": {
+        "type": "object",
+        "properties": {
+          "urls": {
+            "$ref": "#/components/schemas/PhotoUrls"
+          },
+          "blurhash": {
+            "type": "string"
+          }
+        }
+      },
       "NearbyProfileResponse": {
         "type": "object",
         "properties": {
@@ -1990,17 +1822,6 @@
           "version"
         ]
       },
-      "PhotoSummary": {
-        "type": "object",
-        "properties": {
-          "urls": {
-            "$ref": "#/components/schemas/PhotoUrls"
-          },
-          "blurhash": {
-            "type": "string"
-          }
-        }
-      },
       "ReceivedLikeResponse": {
         "type": "object",
         "properties": {
@@ -2032,36 +1853,6 @@
           "kind",
           "likedAt",
           "userId"
-        ]
-      },
-      "CityResponse": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "name": {
-            "type": "string"
-          },
-          "country": {
-            "type": "string"
-          },
-          "lat": {
-            "type": "number",
-            "format": "double"
-          },
-          "lng": {
-            "type": "number",
-            "format": "double"
-          }
-        },
-        "required": [
-          "country",
-          "id",
-          "lat",
-          "lng",
-          "name"
         ]
       },
       "DiscoveryCard": {
@@ -2271,96 +2062,6 @@
           "expiresAt",
           "mediaId",
           "urls"
-        ]
-      },
-      "AdminReportView": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "reporterId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "reason": {
-            "type": "string",
-            "enum": [
-              "bot",
-              "catfish",
-              "inappropriate",
-              "underage",
-              "other"
-            ]
-          },
-          "details": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "open",
-              "reviewing",
-              "resolved",
-              "dismissed"
-            ]
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "createdAt",
-          "id",
-          "reason",
-          "reporterId",
-          "status"
-        ]
-      },
-      "ReportedUserSummary": {
-        "type": "object",
-        "properties": {
-          "userId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "email": {
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "banned": {
-            "type": "boolean"
-          },
-          "openReportCount": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "totalReportCount": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "latestReportAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "openReports": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AdminReportView"
-            }
-          }
-        },
-        "required": [
-          "banned",
-          "latestReportAt",
-          "openReportCount",
-          "openReports",
-          "totalReportCount",
-          "userId"
         ]
       }
     }

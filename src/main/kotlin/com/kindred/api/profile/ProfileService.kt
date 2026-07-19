@@ -1,6 +1,12 @@
 package com.kindred.api.profile
 
+import com.kindred.api.discovery.MatchRepository
+import com.kindred.api.discovery.PhotoSummary
+import com.kindred.api.discovery.UserAgeLookup
 import com.kindred.api.geo.CityIndex
+import com.kindred.api.photo.ModerationStatus
+import com.kindred.api.photo.PhotoRepository
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
@@ -14,6 +20,10 @@ class ProfileService(
     private val interests: InterestRepository,
     private val cityIndex: CityIndex,
     private val clock: Clock,
+    private val matches: MatchRepository,
+    private val photos: PhotoRepository,
+    private val userAges: UserAgeLookup,
+    @param:Value("\${kindred.media.public-base-url}") private val publicBaseUrl: String,
 ) {
 
     @Transactional(readOnly = true)
@@ -75,6 +85,32 @@ class ProfileService(
             throw LocationNotSetException()
         }
         return profiles.findNearby(userId, radiusKm * 1000.0)
+    }
+
+    /**
+     * Returns the profile of a matched user. 404 if no match exists — by design,
+     * the same response as a real missing profile (§ architecture: never reveal existence).
+     */
+    @Transactional(readOnly = true)
+    fun getMatchProfile(requesterId: Long, targetId: Long): MatchProfileResponse {
+        val userA = minOf(requesterId, targetId)
+        val userB = maxOf(requesterId, targetId)
+        if (!matches.existsByUserAAndUserB(userA, userB)) throw ProfileNotFoundException()
+        val profile = profiles.findWithInterestsByUserId(targetId) ?: throw ProfileNotFoundException()
+        val photo = photos.findAllByProfileUserIdInAndModerationStatusAndIsPrimaryTrue(
+            listOf(targetId), ModerationStatus.approved,
+        ).firstOrNull()
+        return MatchProfileResponse(
+            userId = targetId,
+            displayName = profile.displayName,
+            age = userAges.ageOf(targetId),
+            bio = profile.bio,
+            gender = profile.gender,
+            lookingFor = profile.lookingFor ?: emptyList(),
+            relationshipStyles = profile.relationshipStyles ?: emptyList(),
+            interests = profile.interests.map { it.slug }.sorted(),
+            photo = PhotoSummary.from(photo, publicBaseUrl),
+        )
     }
 
     @Transactional(readOnly = true)

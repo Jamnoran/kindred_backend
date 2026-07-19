@@ -68,6 +68,16 @@ class SecurityConfig {
                 csrf.csrfTokenRequestHandler(SpaCsrfTokenRequestHandler())
                 // server-to-server POST from Stripe carries no CSRF cookie/header
                 csrf.ignoringRequestMatchers("/api/v1/stripe/webhook")
+                // verify-email and resend-verification are called before the XSRF cookie
+                // exists (user follows an email link into a fresh browser session).
+                // Both endpoints carry their own proof of identity (one-time token /
+                // publicly-safe email operation), so CSRF adds no meaningful protection here.
+                csrf.ignoringRequestMatchers(
+                    "/api/v1/auth/verify-email",
+                    "/api/v1/auth/resend-verification",
+                    "/api/v1/auth/signup",
+                    "/api/v1/auth/login",
+                )
             }
             .logout { logout ->
                 logout.logoutUrl("/api/v1/auth/logout")
